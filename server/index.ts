@@ -12,6 +12,7 @@ import { similarityRoutes } from './routes/similarity.js'
 import { trashRoutes } from './routes/trash.js'
 import { clawhubRoutes } from './routes/clawhub.js'
 import { skillhubCnRoutes } from './routes/skillhubCn.js'
+import { marketplaceRoutes } from './routes/marketplace.js'
 import { startWatcher } from './scanner/watcher.js'
 import { invalidateCache } from './routes/skills.js'
 import { fullScan } from './scanner/discovery.js'
@@ -32,6 +33,7 @@ await app.register(similarityRoutes)
 await app.register(trashRoutes)
 await app.register(clawhubRoutes)
 await app.register(skillhubCnRoutes)
+await app.register(marketplaceRoutes)
 // Health check
 app.get('/api/health', async () => ({ status: 'ok' }))
 
