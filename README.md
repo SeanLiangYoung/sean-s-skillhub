@@ -85,6 +85,10 @@ npm start
 - `bin/` — CLI 入口与首次安装构建脚本
 - `docs/` — 架构说明、API 概览、开发调试（见 [docs/README.md](docs/README.md)）
 
+## 鸣谢
+
+本项目基于 [Backtthefuture/huangshu](https://github.com/Backtthefuture/huangshu.git) 仓库中的 **skill-hub** 改造、演进而来。
+
 ## 许可
 
 MIT
