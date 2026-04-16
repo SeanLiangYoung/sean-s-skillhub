@@ -10,8 +10,15 @@ export type WatchCallback = (event: { type: string; path: string }) => void
 
 let watcher: chokidar.FSWatcher | null = null
 
-export function startWatcher(callback: WatchCallback): void {
-  if (watcher) return
+/**
+ * @returns whether a file watcher was started (false = disabled, no paths, or already running)
+ */
+export function startWatcher(callback: WatchCallback): boolean {
+  if (watcher) return true
+
+  if (process.env.SKILL_HUB_DISABLE_WATCH === '1') {
+    return false
+  }
 
   const watchPaths = [
     ...allAgentGlobalAbsPaths(homedir).map((x) => x.path),
@@ -28,7 +35,7 @@ export function startWatcher(callback: WatchCallback): void {
     }
   })
 
-  if (validPaths.length === 0) return
+  if (validPaths.length === 0) return false
 
   watcher = chokidar.watch(validPaths, {
     depth: 2,
@@ -43,6 +50,11 @@ export function startWatcher(callback: WatchCallback): void {
     .on('unlink', (p) => callback({ type: 'unlink', path: p }))
     .on('addDir', (p) => callback({ type: 'addDir', path: p }))
     .on('unlinkDir', (p) => callback({ type: 'unlinkDir', path: p }))
+    .on('error', (err) => {
+      console.error('[skill-hub] File watcher error:', err instanceof Error ? err.message : err)
+    })
+
+  return true
 }
 
 export function stopWatcher(): void {
