@@ -151,6 +151,31 @@ function App() {
     applyFilters({ search: q })
   }
 
+  const listFilterActive =
+    scopeFilter !== 'all' ||
+    sourceFilter !== 'all' ||
+    agentFilter !== 'all' ||
+    projectFilter !== 'all' ||
+    conflictOnly ||
+    search.trim() !== ''
+
+  const clearListFilters = useCallback(() => {
+    setScopeFilter('all')
+    setSourceFilter('all')
+    setAgentFilter('all')
+    setProjectFilter('all')
+    setConflictOnly(false)
+    setSearch('')
+    filterSkills({
+      scope: 'all',
+      source: 'all',
+      agent: 'all',
+      project: 'all',
+      search: '',
+      conflictOnly: false,
+    })
+  }, [filterSkills])
+
   // Batch selection handlers
   const toggleSelectMode = () => {
     setSelectMode((prev) => {
@@ -667,6 +692,8 @@ function App() {
                     selectMode={selectMode}
                     selectedIds={selectedIds}
                     onSelectToggle={handleSelectToggle}
+                    filterActive={listFilterActive}
+                    onClearFilters={clearListFilters}
                   />
                 )}
               </main>

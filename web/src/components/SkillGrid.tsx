@@ -8,6 +8,9 @@ interface SkillGridProps {
   selectMode?: boolean
   selectedIds?: Set<string>
   onSelectToggle?: (skill: Skill) => void
+  /** When filters/search hide every skill but the library is non-empty */
+  filterActive?: boolean
+  onClearFilters?: () => void
 }
 
 const groupLabels: Record<string, Record<string, string>> = {
@@ -25,7 +28,16 @@ const groupLabels: Record<string, Record<string, string>> = {
   },
 }
 
-export function SkillGrid({ skills, groupBy, onSkillClick, selectMode, selectedIds, onSelectToggle }: SkillGridProps) {
+export function SkillGrid({
+  skills,
+  groupBy,
+  onSkillClick,
+  selectMode,
+  selectedIds,
+  onSelectToggle,
+  filterActive,
+  onClearFilters,
+}: SkillGridProps) {
   const renderCard = (s: Skill) => (
     <SkillCard
       key={s.id}
@@ -39,8 +51,20 @@ export function SkillGrid({ skills, groupBy, onSkillClick, selectMode, selectedI
 
   if (skills.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48">
-        <p className="text-slate-500 text-sm">没有匹配的 Skills</p>
+      <div className="flex flex-col items-center justify-center h-48 gap-3 px-4 text-center">
+        <p className="text-slate-400 text-sm">没有匹配的 Skills</p>
+        {filterActive && onClearFilters && (
+          <>
+            <p className="text-slate-600 text-xs max-w-md">当前筛选或搜索过严，可清空条件后查看全部。</p>
+            <button
+              type="button"
+              onClick={onClearFilters}
+              className="text-xs font-medium px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700 text-indigo-300 hover:bg-slate-700 hover:border-slate-600 transition-colors"
+            >
+              清空筛选与搜索
+            </button>
+          </>
+        )}
       </div>
     )
   }
