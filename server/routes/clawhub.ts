@@ -3,7 +3,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import { extractClawHubZip } from '../clawhub/extract.js'
 import { apiUrl, fetchClawHub } from '../clawhub/client.js'
-import { parseRegistryId, resolveRegistryBase, type ClawHubRegistryId } from '../clawhub/registry.js'
+import { resolveHttpRegistryBase } from '../marketplace/httpRegistry.js'
 import { globalSkillInstallDir, parseInstallTarget, type InstallAgentTarget } from '../installPaths.js'
 import { invalidateCache } from './skills.js'
 
@@ -45,7 +45,7 @@ function rateLimitHint(): string {
 }
 
 function rbFromQuery(registry: unknown): string {
-  return resolveRegistryBase(parseRegistryId(registry))
+  return resolveHttpRegistryBase(registry)
 }
 
 export async function clawhubRoutes(app: FastifyInstance) {
@@ -264,8 +264,11 @@ export async function clawhubRoutes(app: FastifyInstance) {
     const versionFlag = req.body?.version?.trim()
     const force = Boolean(req.body?.force)
     const agent: InstallAgentTarget = parseInstallTarget(req.body?.target)
-    const regId: ClawHubRegistryId = parseRegistryId(req.body?.registry)
-    const rb = resolveRegistryBase(regId)
+    const regKey =
+      req.body?.registry != null && String(req.body.registry).trim() !== ''
+        ? String(req.body.registry).trim()
+        : 'clawhub'
+    const rb = resolveHttpRegistryBase(regKey)
 
     if (!isSafeSlug(slug)) {
       return reply.status(400).send({ ok: false, error: '非法 slug' })
@@ -405,7 +408,7 @@ export async function clawhubRoutes(app: FastifyInstance) {
       version: resolvedVersion,
       filesWritten,
       agent,
-      registryId: regId,
+      registry: regKey,
     }
   })
 }
