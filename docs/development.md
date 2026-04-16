@@ -69,3 +69,6 @@ npm start       # node dist/server/index.js
 
 - 新增 HTTP 能力：在 `server/routes/` 增加或扩展路由模块，并在 `server/index.ts` 中 `register`。
 - 扫描逻辑变更：优先修改 `server/scanner/`，并注意与 `invalidateCache()`、watcher 的交互。
+- Claude / Cursor 插件目录：分别遍历 `~/.claude/plugins/**/skills/` 与 `~/.cursor/plugins/**/skills/`（含 marketplace 缓存）；列表按**路径**保留多条目，不按 `realPath` 合并。
+- OpenClaw 仓库根目录的 `skills/`：仅当该项目根下存在 `.openclaw`（文件或目录）时扫描，避免误扫普通仓库的 `skills/` 目录。
+- 额外项目发现：环境变量 `SKILL_HUB_PROJECT_ROOTS` 为逗号/冒号分隔的**父目录**列表，对每个存在的目录做一层子目录扫描（与 `~/Projects` 等逻辑相同）；另有 skill 根目录仍可用 `SKILL_HUB_EXTRA_PATHS`。

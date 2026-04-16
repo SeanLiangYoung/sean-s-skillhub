@@ -34,7 +34,10 @@
 
   ```bash
   export SKILL_HUB_EXTRA_PATHS=/path/to/fixture-skills-root
+  export SKILL_HUB_PROJECT_ROOTS=/path/to/parent-of-fixture-repos
   ```
+
+- `SKILL_HUB_PROJECT_ROOTS`：可选，指向若干**父目录**，用于在测试中把含 `.claude/skills` 等的 fixture 仓库纳入项目发现。
 
 - 记录：`/api/debug` 输出作为环境基线。
 
