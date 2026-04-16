@@ -179,7 +179,20 @@ async function getDisabledSkills(): Promise<Set<string>> {
   return disabled
 }
 
+/** OpenClaw may use repo-root `skills/`; we only treat it as a skill root when `.openclaw` exists (avoids generic `skills/` repos). */
+async function shouldScanOpenClawRootSkills(projectRoot: string): Promise<boolean> {
+  const marker = path.join(projectRoot, '.openclaw')
+  try {
+    const s = await fs.stat(marker)
+    if (!s.isFile() && !s.isDirectory()) return false
+  } catch {
+    return false
+  }
+  return dirExists(path.join(projectRoot, 'skills'))
+}
+
 async function hasAnyAgentSkills(projectRoot: string): Promise<boolean> {
+  if (await shouldScanOpenClawRootSkills(projectRoot)) return true
   for (const rel of allAgentProjectRelPaths()) {
     if (await dirExists(path.join(projectRoot, rel))) return true
   }
@@ -238,6 +251,23 @@ async function discoverProjects(): Promise<{ name: string; path: string }[]> {
     } catch {}
   }
 
+  // 2b. Extra project parent dirs — SKILL_HUB_PROJECT_ROOTS (one level of subdirs each)
+  for (const dir of parseProjectScanRoots()) {
+    if (!(await dirExists(dir))) continue
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true })
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        const projectPath = path.join(dir, entry.name)
+        if (await hasAnyAgentSkills(projectPath)) {
+          if (!projects.some((p) => p.path === projectPath)) {
+            projects.push({ name: entry.name, path: projectPath })
+          }
+        }
+      }
+    } catch {}
+  }
+
   // 3. CWD + walk up 3 levels — skip the user's home directory, whose
   //    `.claude/skills/` etc. are the *global* paths, not project paths.
   //    Running `skill-hub` from home otherwise causes every global skill to
@@ -257,43 +287,29 @@ async function discoverProjects(): Promise<{ name: string; path: string }[]> {
   return projects
 }
 
+function uniqueSkillRoots(paths: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const p of paths) {
+    const key = path.resolve(p)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(p)
+  }
+  return out
+}
+
 /**
- * Find every `skills/` directory that belongs to a plugin the user has
- * actually enabled.
- *
- * Claude Code tracks enabled plugins in ~/.claude/plugins/config.json under
- * `repositories`. Anything living only under ~/.claude/plugins/marketplaces/
- * is a *candidate* from a marketplace — Claude Code does not load those, they
- * are just the source catalog. Earlier versions of this scanner walked the
- * entire plugins/ tree and reported those candidates as installed plugin
- * skills, which was very confusing for users who had never enabled a plugin.
+ * Walk a tree (e.g. ~/.claude/plugins or ~/.cursor/plugins) and collect every
+ * directory named `skills` that is a skill root (one level of child folders =
+ * skills). Deduplicates by resolved path.
  */
-async function discoverPluginSkillDirs(): Promise<string[]> {
+async function discoverNestedSkillsDirsUnder(rootDir: string, maxDepth: number): Promise<string[]> {
   const result: string[] = []
-  const pluginsRoot = path.join(homedir, '.claude', 'plugins')
-  const configPath = path.join(pluginsRoot, 'config.json')
-
-  // Extract installLocation of every enabled plugin.
-  const installLocations: string[] = []
-  try {
-    const raw = await fs.readFile(configPath, 'utf-8')
-    const config = JSON.parse(raw) as { repositories?: Record<string, unknown> }
-    const repos = config?.repositories || {}
-    for (const meta of Object.values(repos)) {
-      if (meta && typeof meta === 'object') {
-        const loc = (meta as { installLocation?: unknown }).installLocation
-        if (typeof loc === 'string' && loc.length > 0) {
-          installLocations.push(loc)
-        }
-      }
-    }
-  } catch {}
-
-  // No plugins enabled → nothing to scan. Skip the marketplace catalog entirely.
-  if (installLocations.length === 0) return result
+  if (!(await dirExists(rootDir))) return result
 
   async function walk(dir: string, depth: number) {
-    if (depth > 4) return
+    if (depth > maxDepth) return
     let entries: Awaited<ReturnType<typeof fs.readdir>>
     try {
       entries = await fs.readdir(dir, { withFileTypes: true })
@@ -312,15 +328,8 @@ async function discoverPluginSkillDirs(): Promise<string[]> {
     }
   }
 
-  // Only walk inside each enabled plugin's install location, not the whole
-  // plugins/ tree.
-  for (const loc of installLocations) {
-    if (await dirExists(loc)) {
-      await walk(loc, 0)
-    }
-  }
-
-  return result
+  await walk(rootDir, 0)
+  return uniqueSkillRoots(result)
 }
 
 function detectConflicts(skills: Skill[]): ConflictGroup[] {
@@ -349,6 +358,17 @@ function parseExtraPaths(): string[] {
     .map((p) => p.trim())
     .filter(Boolean)
     .map((p) => (p.startsWith('~') ? path.join(homedir, p.slice(1)) : p))
+}
+
+/** Parent directories to scan one level deep for repos that contain skills (comma or colon separated). */
+function parseProjectScanRoots(): string[] {
+  const raw = process.env.SKILL_HUB_PROJECT_ROOTS
+  if (!raw) return []
+  return raw
+    .split(/[:,]/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => (p.startsWith('~') ? path.join(homedir, p.slice(1)) : path.resolve(p)))
 }
 
 export async function fullScan(): Promise<ScanResult> {
@@ -393,12 +413,23 @@ export async function fullScan(): Promise<ScanResult> {
     )
   }
 
-  // 2. Plugin skills — Claude Code only for now
-  const pluginSkillDirs = await discoverPluginSkillDirs()
-  for (const pluginDir of pluginSkillDirs) {
-    const pluginName = path.relative(path.join(homedir, '.claude', 'plugins'), pluginDir)
+  // 2. Claude Code — ~/.claude/plugins/**/skills/ (marketplace cache + enabled plugins; same layout as Cursor)
+  const claudePluginsRoot = path.join(homedir, '.claude', 'plugins')
+  const claudePluginSkillDirs = await discoverNestedSkillsDirsUnder(claudePluginsRoot, 14)
+  for (const skillRoot of claudePluginSkillDirs) {
+    const rel = path.relative(claudePluginsRoot, skillRoot)
     allSkills.push(
-      ...(await scanAndReport(`plugin:${pluginName}`, pluginDir, 'plugin', 'claude-code')),
+      ...(await scanAndReport(`plugin:${rel || '.'}`, skillRoot, 'plugin', 'claude-code')),
+    )
+  }
+
+  // 2b. Cursor — ~/.cursor/plugins/**/skills/
+  const cursorPluginsRoot = path.join(homedir, '.cursor', 'plugins')
+  const cursorPluginSkillDirs = await discoverNestedSkillsDirsUnder(cursorPluginsRoot, 14)
+  for (const skillRoot of cursorPluginSkillDirs) {
+    const rel = path.relative(cursorPluginsRoot, skillRoot)
+    allSkills.push(
+      ...(await scanAndReport(`cursor-plugin:${rel || '.'}`, skillRoot, 'plugin', 'cursor')),
     )
   }
 
@@ -423,6 +454,19 @@ export async function fullScan(): Promise<ScanResult> {
         projectTotal += projectSkills.length
       }
     }
+    if (await shouldScanOpenClawRootSkills(proj.path)) {
+      const openclawRootSkills = path.join(proj.path, 'skills')
+      const projectSkills = await scanAndReport(
+        `project:${proj.name}:openclaw:skills`,
+        openclawRootSkills,
+        'project',
+        'openclaw',
+        proj.name,
+        proj.path,
+      )
+      allSkills.push(...projectSkills)
+      projectTotal += projectSkills.length
+    }
     projects.push({
       name: proj.name,
       path: proj.path,
@@ -437,32 +481,24 @@ export async function fullScan(): Promise<ScanResult> {
     )
   }
 
-  // Deduplicate by realPath (symlinks can point to the same skill from multiple roots)
-  const seen = new Set<string>()
-  const dedupedSkills: Skill[] = []
-  for (const s of allSkills) {
-    if (seen.has(s.realPath)) continue
-    seen.add(s.realPath)
-    dedupedSkills.push(s)
-  }
-
-  const conflicts = detectConflicts(dedupedSkills)
+  // Keep every filesystem location as its own row (same realPath may appear twice)
+  const conflicts = detectConflicts(allSkills)
 
   const bySource: Record<string, number> = {}
   const byAgent: Record<string, number> = {}
-  for (const s of dedupedSkills) {
+  for (const s of allSkills) {
     bySource[s.source] = (bySource[s.source] || 0) + 1
     byAgent[s.agent] = (byAgent[s.agent] || 0) + 1
   }
 
   return {
-    skills: dedupedSkills,
+    skills: allSkills,
     projects,
     conflicts,
     stats: {
-      total: dedupedSkills.length,
-      global: dedupedSkills.filter((s) => s.scope === 'global').length,
-      project: dedupedSkills.filter((s) => s.scope === 'project').length,
+      total: allSkills.length,
+      global: allSkills.filter((s) => s.scope === 'global').length,
+      project: allSkills.filter((s) => s.scope === 'project').length,
       bySource,
       byAgent,
     },

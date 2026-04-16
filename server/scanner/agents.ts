@@ -74,9 +74,9 @@ export interface AgentDef {
  *    replit) still appear in the registry with empty path arrays so that
  *    frontmatter `agent: cline` is a valid override.
  *
- * 3. OpenClaw's project path is a bare `skills/` which would false-positive
- *    on any repo with a top-level skills dir. We skip it — only the global
- *    path is scanned.
+ * 3. OpenClaw may use repo-root `skills/`. That path is not listed here (would
+ *    false-positive on generic `skills/` folders); `discovery.ts` scans it only
+ *    when `.openclaw` exists in the project root.
  *
  * 4. trae + trae-cn share `.trae/skills/` as project path. Attributed to
  *    `trae` (alphabetically first); trae-cn is distinguishable only via
