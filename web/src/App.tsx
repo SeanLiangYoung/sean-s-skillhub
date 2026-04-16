@@ -9,18 +9,21 @@ import { SkillDetail } from './components/SkillDetail'
 import { Dashboard } from './components/Dashboard'
 import { SimilarView } from './components/SimilarView'
 import { TrashView } from './components/TrashView'
-import { SyncView } from './components/SyncView'
+import { MarketplaceView } from './components/MarketplaceView'
 import { ConflictsView } from './components/ConflictsView'
 import { AboutModal } from './components/AboutModal'
+import { SettingsModal } from './components/SettingsModal'
+import { useMarketplaceSource } from './hooks/useMarketplaceSource'
 import { Footer } from './components/Footer'
 import type { Skill } from './hooks/useSkills'
 
 type GroupBy = 'none' | 'scope' | 'source' | 'project'
-type View = 'skills' | 'similar' | 'dashboard' | 'trash' | 'sync' | 'conflicts'
+type View = 'skills' | 'similar' | 'dashboard' | 'trash' | 'conflicts' | 'clawhub'
 
 function App() {
   const { allSkills, skills, stats, projects, conflicts, loading, error, scan, filterSkills } = useSkills()
   const { theme, toggle: toggleTheme } = useTheme()
+  const [marketplaceSource, setMarketplaceSource] = useMarketplaceSource()
 
   const [view, setView] = useState<View>('skills')
   const [scopeFilter, setScopeFilter] = useState('all')
@@ -40,6 +43,7 @@ function App() {
   const [bulkDeleteResult, setBulkDeleteResult] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [conflictRowBusy, setConflictRowBusy] = useState<Set<string>>(new Set())
   const [aboutOpen, setAboutOpen] = useState<boolean>(false)
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     try {
       return localStorage.getItem('skill-hub:sidebar') !== 'closed'
@@ -246,12 +250,9 @@ function App() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => setAboutOpen(true)}
-              title="关于黄叔"
-              className="flex items-center gap-3 group"
+              title="关于 Skill Hub"
+              className="flex items-center group"
             >
-              <div className="w-9 h-9 rounded-xl bg-yellow-400 flex items-center justify-center text-slate-900 font-bold text-base shadow-lg shadow-yellow-400/20 group-hover:scale-105 group-hover:bg-yellow-300 transition-all">
-                黄
-              </div>
               <div className="text-left">
                 <h1 className="text-base font-bold text-slate-100 leading-tight group-hover:text-yellow-300 transition-colors">
                   Skill 管理器
@@ -289,12 +290,12 @@ function App() {
                 仪表盘
               </button>
               <button
-                onClick={() => setView('sync')}
+                onClick={() => setView('clawhub')}
                 className={`px-3 py-1 rounded-md text-xs transition-all ${
-                  view === 'sync' ? 'bg-slate-700 text-slate-200 shadow-sm' : 'text-slate-500 hover:text-slate-300'
+                  view === 'clawhub' ? 'bg-slate-700 text-slate-200 shadow-sm' : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
-                同步
+                技能市场
               </button>
               <button
                 onClick={() => setView('trash')}
@@ -333,23 +334,6 @@ function App() {
               </div>
             )}
 
-            {/* Theme toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
-              title={theme === 'dark' ? '切换到日间模式' : '切换到夜间模式'}
-            >
-              {theme === 'dark' ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="5" /><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-              )}
-            </button>
-
             <button
               onClick={scan}
               disabled={loading}
@@ -365,6 +349,36 @@ function App() {
                 </svg>
               )}
               <span>{loading ? '扫描中...' : '一键扫描'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
+              title="系统配置"
+              aria-label="系统配置"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
+              title={theme === 'dark' ? '切换到日间模式' : '切换到夜间模式'}
+            >
+              {theme === 'dark' ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="5" /><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
@@ -397,8 +411,12 @@ function App() {
         )}
 
         {/* Dashboard view */}
-        {view === 'sync' ? (
-          <SyncView />
+        {view === 'clawhub' ? (
+          <MarketplaceView
+            onInstalled={scan}
+            marketplaceSource={marketplaceSource}
+            onMarketplaceSourceChange={setMarketplaceSource}
+          />
         ) : view === 'conflicts' ? (
           <>
             <div className="flex items-center justify-end mb-4">
@@ -646,6 +664,13 @@ function App() {
         onClose={() => setAboutOpen(false)}
         stats={stats}
         conflictCount={conflicts.length}
+      />
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        marketplaceSource={marketplaceSource}
+        onMarketplaceSourceChange={setMarketplaceSource}
       />
 
       {/* Bulk delete confirm */}

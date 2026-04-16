@@ -1,6 +1,6 @@
 # Skill Hub
 
-> 黄叔的 Claude Skill 可视化管理器 — 一键扫描并管理你机器上所有 Claude Agent Skills。
+> Claude Skill 可视化管理器 — 一键扫描并管理你机器上所有 Claude Agent Skills。
 
 ## 它解决了什么问题
 
@@ -16,8 +16,10 @@ Skill Hub 是一个本地 Web UI：扫描全盘、聚合展示、可视化编辑
 ## 快速开始（一行命令）
 
 ```bash
-npm install -g https://github.com/Backtthefuture/huangshu/raw/main/tools/skill-hub/release/claude-skill-hub.tgz && skill-hub
+npm install -g claude-skill-hub && skill-hub
 ```
+
+若 npm 上尚未发布该包，可在克隆本仓库后在项目根目录执行 `npm run build && npm install -g .`，再使用 `skill-hub` 启动。
 
 首次运行会自动：
 1. 下载预构建的 tarball 并全局安装
@@ -56,8 +58,8 @@ http://localhost:3456/api/debug
 ## 本地开发
 
 ```bash
-git clone https://github.com/Backtthefuture/huangshu.git
-cd huangshu/tools/skill-hub
+git clone <仓库地址>
+cd <项目目录>
 
 npm install
 npm run dev       # 开发模式：前端 5173 + 后端 3456
