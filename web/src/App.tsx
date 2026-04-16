@@ -13,7 +13,9 @@ import { MarketplaceView } from './components/MarketplaceView'
 import { ConflictsView } from './components/ConflictsView'
 import { AboutModal } from './components/AboutModal'
 import { SettingsModal } from './components/SettingsModal'
-import { useMarketplaceSource } from './hooks/useMarketplaceSource'
+import { useMarketplaceProvider } from './hooks/useMarketplaceProvider'
+import type { MarketplaceProviderInfo } from './types/marketplace'
+import { MARKETPLACE_PROVIDERS_FALLBACK } from './data/marketplaceFallbackProviders'
 import { Footer } from './components/Footer'
 import type { Skill } from './hooks/useSkills'
 
@@ -23,7 +25,23 @@ type View = 'skills' | 'similar' | 'dashboard' | 'trash' | 'conflicts' | 'clawhu
 function App() {
   const { allSkills, skills, stats, projects, conflicts, loading, error, scan, filterSkills } = useSkills()
   const { theme, toggle: toggleTheme } = useTheme()
-  const [marketplaceSource, setMarketplaceSource] = useMarketplaceSource()
+  const [marketplaceProviderId, setMarketplaceProviderId] = useMarketplaceProvider()
+  const [marketplaceProviders, setMarketplaceProviders] = useState<MarketplaceProviderInfo[]>(
+    () => MARKETPLACE_PROVIDERS_FALLBACK,
+  )
+
+  useEffect(() => {
+    fetch('/api/marketplace/providers')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok && Array.isArray(d.providers)) {
+          setMarketplaceProviders(d.providers as MarketplaceProviderInfo[])
+        }
+      })
+      .catch(() => {
+        setMarketplaceProviders(MARKETPLACE_PROVIDERS_FALLBACK)
+      })
+  }, [])
 
   const [view, setView] = useState<View>('skills')
   const [scopeFilter, setScopeFilter] = useState('all')
@@ -414,8 +432,9 @@ function App() {
         {view === 'clawhub' ? (
           <MarketplaceView
             onInstalled={scan}
-            marketplaceSource={marketplaceSource}
-            onMarketplaceSourceChange={setMarketplaceSource}
+            providerId={marketplaceProviderId}
+            onProviderChange={setMarketplaceProviderId}
+            providers={marketplaceProviders}
           />
         ) : view === 'conflicts' ? (
           <>
@@ -669,8 +688,9 @@ function App() {
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        marketplaceSource={marketplaceSource}
-        onMarketplaceSourceChange={setMarketplaceSource}
+        providers={marketplaceProviders}
+        providerId={marketplaceProviderId}
+        onProviderChange={setMarketplaceProviderId}
       />
 
       {/* Bulk delete confirm */}

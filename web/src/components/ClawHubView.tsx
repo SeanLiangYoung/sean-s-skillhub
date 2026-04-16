@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { MarketplaceSource } from '../hooks/useMarketplaceSource'
+import type { MarketplaceProviderInfo } from '../types/marketplace'
 import { MarketplacePageShell } from './marketplace/MarketplacePageShell'
 import { MarketplaceRegistryBlock } from './marketplace/MarketplaceRegistryBlock'
 import { MarketplaceFilterSection, MarketplaceFilterButton } from './marketplace/MarketplaceFilterPrimitives'
@@ -34,8 +34,9 @@ const CLAWHUB_SORTS: { value: string; label: string }[] = [
 
 interface ClawHubViewProps {
   onInstalled?: () => void
-  marketplaceSource: MarketplaceSource
-  onMarketplaceSourceChange: (v: MarketplaceSource) => void
+  providers: MarketplaceProviderInfo[]
+  providerId: string
+  onProviderChange: (id: string) => void
 }
 
 type InstallTarget = 'claude-code' | 'cursor'
@@ -46,8 +47,9 @@ function installKey(slug: string, target: InstallTarget) {
 
 export function ClawHubView({
   onInstalled,
-  marketplaceSource,
-  onMarketplaceSourceChange,
+  providers,
+  providerId,
+  onProviderChange,
 }: ClawHubViewProps) {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try {
@@ -81,10 +83,21 @@ export function ClawHubView({
   const [installing, setInstalling] = useState<string | null>(null)
   const [installMsg, setInstallMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
-  const reg = useMemo(
-    () => (marketplaceSource === 'skillhub' ? 'skillhub' : 'clawhub'),
-    [marketplaceSource],
+  const currentProvider = useMemo(
+    () => providers.find((p) => p.id === providerId),
+    [providers, providerId],
   )
+
+  const reg = useMemo(() => {
+    const p = providers.find((x) => x.id === providerId)
+    if (p?.kind === 'clawhub-http' && p.registry) return p.registry
+    const fb: Record<string, string> = {
+      clawhub: 'clawhub',
+      clawhub_cn: 'clawhub_cn',
+      skillhub: 'skillhub',
+    }
+    return fb[providerId] || 'clawhub'
+  }, [providers, providerId])
 
   const runSearch = useCallback(async () => {
     const query = q.trim()
@@ -216,7 +229,11 @@ export function ClawHubView({
 
   const sidebar = (
     <>
-      <MarketplaceRegistryBlock value={marketplaceSource} onChange={onMarketplaceSourceChange} />
+      <MarketplaceRegistryBlock
+        providers={providers}
+        value={providerId}
+        onChange={onProviderChange}
+      />
 
       <MarketplaceFilterSection title="浏览方式">
         <MarketplaceFilterButton
@@ -277,13 +294,36 @@ export function ClawHubView({
           安装至 <code className="text-[10px] bg-slate-800 px-0.5 rounded">~/.claude/skills</code> 或{' '}
           <code className="text-[10px] bg-slate-800 px-0.5 rounded">~/.cursor/skills</code>。
         </p>
-      ) : (
+      ) : reg === 'clawhub_cn' ? (
         <p className="text-[11px] text-slate-600 leading-relaxed px-1">
           来自{' '}
-          <a href="https://clawhub.ai" target="_blank" rel="noreferrer" className="text-indigo-400/90 hover:underline">
-            ClawHub
+          <a
+            href="https://mirror-cn.clawhub.com"
+            target="_blank"
+            rel="noreferrer"
+            className="text-indigo-400/90 hover:underline"
+          >
+            ClawHub 中国镜像
           </a>
-          ，安装至{' '}
+          （ClawHub 兼容 API）。可用 <code className="text-[10px] bg-slate-800 px-0.5 rounded">SKILL_HUB_CLAWHUB_CN_REGISTRY</code>{' '}
+          覆盖地址。安装至{' '}
+          <code className="text-[10px] bg-slate-800 px-0.5 rounded">~/.claude/skills</code> 或{' '}
+          <code className="text-[10px] bg-slate-800 px-0.5 rounded">~/.cursor/skills</code>。
+        </p>
+      ) : (
+        <p className="text-[11px] text-slate-600 leading-relaxed px-1">
+          {currentProvider?.description ? (
+            <span>{currentProvider.description} </span>
+          ) : (
+            <>
+              来自{' '}
+              <a href="https://clawhub.ai" target="_blank" rel="noreferrer" className="text-indigo-400/90 hover:underline">
+                ClawHub
+              </a>
+              ，
+            </>
+          )}
+          安装至{' '}
           <code className="text-[10px] bg-slate-800 px-0.5 rounded">~/.claude/skills</code> 或{' '}
           <code className="text-[10px] bg-slate-800 px-0.5 rounded">~/.cursor/skills</code>。
         </p>
@@ -298,17 +338,23 @@ export function ClawHubView({
     </span>
   )
 
-  const cardBadges = (mode: 'search' | 'browse') => (
-    <>
-      <MarketplaceSourcePill
-        label={reg === 'skillhub' ? 'SkillHub' : 'ClawHub'}
-        variant={reg === 'skillhub' ? 'skillhub' : 'clawhub'}
-      />
-      <MarketplaceSourcePill label={mode === 'search' ? '搜索' : '浏览'} variant="neutral" />
-    </>
-  )
+  const cardBadges = (mode: 'search' | 'browse') => {
+    const srcLabel =
+      currentProvider?.label ||
+      (reg === 'skillhub' ? 'SkillHub' : reg === 'clawhub_cn' ? '镜像' : 'ClawHub')
+    const srcVariant =
+      reg === 'skillhub' ? 'skillhub' : reg === 'clawhub_cn' ? 'clawhub' : 'clawhub'
+    return (
+      <>
+        <MarketplaceSourcePill label={srcLabel} variant={srcVariant} />
+        <MarketplaceSourcePill label={mode === 'search' ? '搜索' : '浏览'} variant="neutral" />
+      </>
+    )
+  }
 
-  const skillWebBase = reg === 'skillhub' ? 'https://skill.xfyun.cn' : 'https://clawhub.ai'
+  const skillWebBase =
+    currentProvider?.webBase ||
+    (reg === 'skillhub' ? 'https://skill.xfyun.cn' : reg === 'clawhub_cn' ? 'https://mirror-cn.clawhub.com' : 'https://clawhub.ai')
 
   const renderActions = (slug: string) => (
     <>
@@ -459,7 +505,9 @@ export function ClawHubView({
           ) : (
             <>
               <div className="flex items-center gap-3">
-                <h2 className="text-sm font-semibold text-slate-300">🌐 ClawHub 列表</h2>
+                <h2 className="text-sm font-semibold text-slate-300">
+                  🌐 {currentProvider?.label || 'ClawHub'} 列表
+                </h2>
                 <span className="text-xs text-slate-600 bg-slate-800 px-2 py-0.5 rounded-full">{browseItems.length}</span>
                 <div className="flex-1 h-px bg-slate-800/60" />
               </div>

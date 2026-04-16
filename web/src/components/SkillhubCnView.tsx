@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { MarketplaceSource } from '../hooks/useMarketplaceSource'
+import type { MarketplaceProviderInfo } from '../types/marketplace'
 import { MarketplacePageShell } from './marketplace/MarketplacePageShell'
 import { MarketplaceRegistryBlock } from './marketplace/MarketplaceRegistryBlock'
 import { MarketplaceItemCard, MarketplaceSourcePill } from './marketplace/MarketplaceItemCard'
@@ -12,8 +12,9 @@ const INSTALL_CLI_ONLY =
 
 interface SkillhubCnViewProps {
   onInstalled?: () => void
-  marketplaceSource: MarketplaceSource
-  onMarketplaceSourceChange: (v: MarketplaceSource) => void
+  providers: MarketplaceProviderInfo[]
+  providerId: string
+  onProviderChange: (id: string) => void
 }
 
 type InstallTarget = 'claude-code' | 'cursor'
@@ -24,8 +25,9 @@ function installKey(name: string, target: InstallTarget) {
 
 export function SkillhubCnView({
   onInstalled,
-  marketplaceSource,
-  onMarketplaceSourceChange,
+  providers,
+  providerId,
+  onProviderChange,
 }: SkillhubCnViewProps) {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try {
@@ -129,7 +131,7 @@ export function SkillhubCnView({
 
   const sidebar = (
     <>
-      <MarketplaceRegistryBlock value={marketplaceSource} onChange={onMarketplaceSourceChange} />
+      <MarketplaceRegistryBlock providers={providers} value={providerId} onChange={onProviderChange} />
       <p className="text-[11px] text-slate-600 leading-relaxed px-1">
         <a
           href="https://skillhub.cn/install/skillhub.md"
