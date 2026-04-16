@@ -83,6 +83,7 @@ npm start
 - `server/` — Fastify 后端（API + WebSocket + 文件监听 + 扫描器）
 - `web/` — React + Vite + Tailwind 前端（含 ErrorBoundary）
 - `bin/` — CLI 入口与首次安装构建脚本
+- `docs/` — 架构说明、API 概览、开发调试（见 [docs/README.md](docs/README.md)）
 
 ## 许可
 
