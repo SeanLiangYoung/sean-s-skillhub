@@ -34,6 +34,21 @@ npm run build   # vite build + tsc 编译 server
 npm start       # node dist/server/index.js
 ```
 
+## E2E（Playwright）
+
+冒烟测试在 `e2e/`。首次在本机运行前需安装浏览器二进制：
+
+```bash
+npx playwright install chromium
+```
+
+然后先构建再跑（`playwright.config` 会启动 `dist/server/index.js`）：
+
+```bash
+npm run build
+npm run test:e2e
+```
+
 若未先构建前端，`server` 会以 **仅 API 模式** 启动并在控制台提示缺少 `dist/web`（仍可通过 `/api/*` 访问）。
 
 ## 环境变量
@@ -42,6 +57,7 @@ npm start       # node dist/server/index.js
 |------|------|
 | `PORT` | HTTP 起始端口（默认 `3456`；占用时自动尝试后续端口） |
 | `SKILL_HUB_NO_OPEN` | 设为 `1` 时启动不自动打开浏览器 |
+| `SKILL_HUB_DISABLE_WATCH` | 设为 `1` 时不启动文件监听（适合 CI、沙箱或 `EMFILE` 环境；列表仍可通过「一键扫描」刷新） |
 | `SKILL_HUB_EXTRA_PATHS` | 额外扫描路径，冒号或逗号分隔 |
 | `SKILL_HUB_CLAWHUB_TOKEN` | ClawHub 请求令牌（可选，可能缓解限流） |
 | `SKILL_HUB_CLAWHUB_TRY_SKILLS_LIST` | 设为 `1` 时优先请求 ClawHub `/api/v1/skills`（见服务端 clawhub 路由注释） |
