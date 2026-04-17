@@ -17,7 +17,10 @@ test('invalid view param is corrected to skills in URL', async ({ page }) => {
 
 test('fixture skill appears after scan', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByText('CI Minimal Skill')).toBeVisible({ timeout: 120_000 })
+  // Fixture may be listed twice (e.g. duplicate scan paths); assert at least one card.
+  await expect(page.getByRole('heading', { name: /CI Minimal Skill/ }).first()).toBeVisible({
+    timeout: 120_000,
+  })
 })
 
 test('health API', async ({ request }) => {
