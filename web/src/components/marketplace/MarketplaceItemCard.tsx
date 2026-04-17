@@ -63,15 +63,11 @@ export function MarketplaceSourcePill({
   variant = 'neutral',
 }: {
   label: string
-  variant?: 'clawhub' | 'skillhub' | 'skillhubcn' | 'neutral'
+  variant?: 'clawhub' | 'neutral'
 }) {
   const cls =
     variant === 'clawhub'
       ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
-      : variant === 'skillhub'
-        ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-        : variant === 'skillhubcn'
-          ? 'bg-cyan-500/10 border-cyan-500/25 text-cyan-200'
-          : 'bg-slate-800/80 border-slate-700 text-slate-400'
+      : 'bg-slate-800/80 border-slate-700 text-slate-400'
   return <Pill className={cls}>{label}</Pill>
 }

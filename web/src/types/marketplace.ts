@@ -1,4 +1,4 @@
-export type MarketplaceProviderKind = 'clawhub-http' | 'cli' | 'link-only' | 'agent-guided'
+export type MarketplaceProviderKind = 'clawhub-http'
 
 export type MarketplaceProviderInfo = {
   id: string
@@ -6,6 +6,6 @@ export type MarketplaceProviderInfo = {
   kind: MarketplaceProviderKind
   registry?: string
   description?: string
-  group: 'http' | 'cli' | 'browse'
+  group: 'http'
   webBase?: string
 }
