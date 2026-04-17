@@ -1,25 +1,9 @@
-import {
-  resolveRegistryBase,
-  parseRegistryId,
-  type ClawHubRegistryId,
-} from '../clawhub/registry.js'
-import { getCustomHttpPresets } from './presets.js'
+import { resolveRegistryBase, parseRegistryId } from '../clawhub/registry.js'
 
 /**
- * Resolve ClawHub-compatible HTTP registry base URL from UI / API `registry` string.
- * Supports built-in ids, clawhub_cn, and custom preset ids from SKILL_HUB_MARKETPLACE_PRESETS_JSON.
+ * Resolve ClawHub HTTP registry base URL from UI / API `registry` string.
+ * Only `clawhub` is supported; other values are ignored and use the official base.
  */
-export function resolveHttpRegistryBase(registryRaw: unknown): string {
-  const s = String(registryRaw ?? '').trim()
-  if (!s) {
-    return resolveRegistryBase('clawhub')
-  }
-
-  const custom = getCustomHttpPresets().find((p) => p.id === s)
-  if (custom) {
-    return custom.baseUrl
-  }
-
-  const builtin: ClawHubRegistryId = parseRegistryId(s)
-  return resolveRegistryBase(builtin)
+export function resolveHttpRegistryBase(_registryRaw: unknown): string {
+  return resolveRegistryBase(parseRegistryId())
 }

@@ -2,9 +2,8 @@
  * ClawHub HTTP client: retries on 429, optional Bearer token, short GET cache.
  *
  * Env:
- * - SKILL_HUB_CLAWHUB_TOKEN — optional; Bearer for ClawHub / SkillHub APIs (see clawhub login).
- * - SKILL_HUB_CLAWHUB_REGISTRY — default ClawHub base (see ../clawhub/registry.ts)
- * - SKILL_HUB_SKILLHUB_REGISTRY — SkillHub (讯飞) base, default https://skill.xfyun.cn
+ * - SKILL_HUB_CLAWHUB_TOKEN — optional; Bearer for ClawHub API (see clawhub login).
+ * - SKILL_HUB_CLAWHUB_REGISTRY — override default ClawHub base (see registry.ts).
  */
 
 import { resolveRegistryBase } from './registry.js'

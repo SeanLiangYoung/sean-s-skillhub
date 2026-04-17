@@ -256,6 +256,122 @@ export async function clawhubRoutes(app: FastifyInstance) {
     }
   })
 
+  /** Download skill zip to disk (no extract) — same moderation rules as install */
+  app.get<{
+    Querystring: { slug?: string; registry?: string; version?: string; force?: string }
+  }>('/api/clawhub/download', async (req, reply) => {
+    const slug = (req.query.slug || '').trim()
+    const versionFlag = req.query.version?.trim()
+    const force = req.query.force === '1' || req.query.force === 'true'
+    const regKey =
+      req.query.registry != null && String(req.query.registry).trim() !== ''
+        ? String(req.query.registry).trim()
+        : 'clawhub'
+    const rb = resolveHttpRegistryBase(regKey)
+
+    if (!isSafeSlug(slug)) {
+      return reply.status(400).send({ ok: false, error: '非法 slug' })
+    }
+
+    const metaRes = await fetchClawHub(`/api/v1/skills/${encodeURIComponent(slug)}`, {
+      clawhubMemoryCache: false,
+      registryBase: rb,
+    })
+    const metaText = await metaRes.text()
+    if (metaRes.status === 404) {
+      return reply.status(404).send({ ok: false, error: 'Skill 不存在' })
+    }
+    if (!metaRes.ok) {
+      return reply.status(metaRes.status === 429 ? 429 : 502).send({
+        ok: false,
+        code: metaRes.status === 429 ? 'RATE_LIMIT' : undefined,
+        error:
+          metaRes.status === 429
+            ? rateLimitHint()
+            : metaText.slice(0, 300) || `无法获取元数据 (${metaRes.status})`,
+      })
+    }
+
+    let meta: {
+      moderation?: { isMalwareBlocked?: boolean; isSuspicious?: boolean } | null
+      latestVersion?: { version: string } | null
+    }
+    try {
+      meta = JSON.parse(metaText) as typeof meta
+    } catch {
+      return reply.status(502).send({ ok: false, error: '元数据解析失败' })
+    }
+
+    if (meta.moderation?.isMalwareBlocked) {
+      return reply.status(403).send({
+        ok: false,
+        error: '该 Skill 已被标记为恶意，无法下载',
+        code: 'MALWARE_BLOCKED',
+      })
+    }
+
+    if (meta.moderation?.isSuspicious && !force) {
+      return reply.status(409).send({
+        ok: false,
+        error:
+          '该 Skill 被标记为可疑（ClawHub 审核）。若仍要下载，请确认已审阅源码并附加查询参数 force=1。',
+        code: 'SUSPICIOUS',
+      })
+    }
+
+    const resolvedVersion =
+      versionFlag ||
+      meta.latestVersion?.version ||
+      null
+    if (!resolvedVersion) {
+      return reply.status(400).send({ ok: false, error: '无法解析版本号' })
+    }
+
+    if (versionFlag) {
+      const vRes = await fetchClawHub(
+        `/api/v1/skills/${encodeURIComponent(slug)}/versions/${encodeURIComponent(versionFlag)}`,
+        { clawhubMemoryCache: false, registryBase: rb },
+      )
+      if (!vRes.ok) {
+        return reply.status(400).send({ ok: false, error: '指定版本不存在' })
+      }
+    }
+
+    const dl = new URL(apiUrl('/api/v1/download', rb))
+    dl.searchParams.set('slug', slug)
+    dl.searchParams.set('version', resolvedVersion)
+
+    const zipRes = await fetchClawHub(dl.pathname + dl.search, {
+      clawhubMemoryCache: false,
+      registryBase: rb,
+      headers: { Accept: 'application/zip, application/octet-stream, */*' },
+    })
+    if (!zipRes.ok) {
+      const errText = await zipRes.text().catch(() => '')
+      return reply.status(zipRes.status === 429 ? 429 : 502).send({
+        ok: false,
+        code: zipRes.status === 429 ? 'RATE_LIMIT' : undefined,
+        error:
+          zipRes.status === 429
+            ? rateLimitHint()
+            : errText.slice(0, 300) || `下载失败 (${zipRes.status})`,
+      })
+    }
+
+    const buf = new Uint8Array(await zipRes.arrayBuffer())
+    const safeSlug = slug.replace(/[^\w\-+.]/g, '_').slice(0, 80)
+    const safeVer = resolvedVersion.replace(/[^\w.\-]/g, '_').slice(0, 40)
+    const fname = `${safeSlug}-${safeVer}.zip`
+    return reply
+      .header('Content-Type', 'application/zip')
+      .header(
+        'Content-Disposition',
+        `attachment; filename="${fname}"; filename*=UTF-8''${encodeURIComponent(fname)}`,
+      )
+      .header('Content-Length', String(buf.byteLength))
+      .send(Buffer.from(buf))
+  })
+
   /** Install zip into ~/.claude/skills/<slug>/ or ~/.cursor/skills/<slug>/ */
   app.post<{
     Body: { slug?: string; version?: string; force?: boolean; target?: string; registry?: string }
