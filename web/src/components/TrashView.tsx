@@ -109,7 +109,7 @@ export function TrashView({ onCountChange, onRestored }: TrashViewProps) {
   const formatDate = (iso: string) => new Date(iso).toLocaleString('zh-CN')
 
   return (
-    <div className="space-y-4">
+    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-200">回收站</h2>

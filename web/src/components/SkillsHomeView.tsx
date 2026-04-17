@@ -1,8 +1,7 @@
 import { Sidebar } from './Sidebar'
 import { SkillGrid } from './SkillGrid'
+import { SkillSearchInput } from './SkillSearchInput'
 import type { Stats, Project, Skill } from '../hooks/useSkills'
-import type { SkillGroupBy } from '../types/skillsList'
-
 interface SkillsHomeViewProps {
   search: string
   onSearchChange: (q: string) => void
@@ -21,9 +20,6 @@ interface SkillsHomeViewProps {
   skills: Skill[]
   allSkillsTotal: number
   loading: boolean
-  groupBy: SkillGroupBy
-  onGroupByChange: (v: SkillGroupBy) => void
-  hasProjectRoots: boolean
   conflictCount: number
   onOpenConflicts: () => void
   selectMode: boolean
@@ -58,9 +54,6 @@ export function SkillsHomeView({
   skills,
   allSkillsTotal,
   loading,
-  groupBy,
-  onGroupByChange,
-  hasProjectRoots,
   conflictCount,
   onOpenConflicts,
   selectMode,
@@ -76,27 +69,15 @@ export function SkillsHomeView({
   onClearListFilters,
   onSkillClick,
 }: SkillsHomeViewProps) {
-  const groupOptions: { value: SkillGroupBy; label: string; disabled?: boolean }[] = [
-    { value: 'scope', label: '按层级' },
-    { value: 'source', label: '按来源' },
-    { value: 'project', label: '按项目', disabled: !hasProjectRoots },
-    { value: 'none', label: '平铺' },
-  ]
-
   return (
-    <>
-      <div className="md:hidden mb-4">
-        <input
-          type="text"
-          placeholder="搜索 Skills..."
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-sm text-slate-200
-                     placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 transition-colors"
-        />
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      {!sidebarOpen && (
+        <div className="mb-4 max-w-xl shrink-0">
+          <SkillSearchInput value={search} onChange={onSearchChange} size="default" />
+        </div>
+      )}
 
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row lg:items-stretch">
         {sidebarOpen && (
           <Sidebar
             stats={stats}
@@ -109,11 +90,13 @@ export function SkillsHomeView({
             onSourceChange={onSourceChange}
             onAgentChange={onAgentChange}
             onProjectChange={onProjectChange}
+            search={search}
+            onSearchChange={onSearchChange}
           />
         )}
 
-        <main className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-4">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="mb-4 flex shrink-0 items-center justify-between">
             <div className="flex items-center gap-2">
               <button
                 onClick={onSidebarOpenToggle}
@@ -151,48 +134,24 @@ export function SkillsHomeView({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onToggleSelectMode}
-                title={selectMode ? '退出批量选择' : '进入批量选择'}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
-                  selectMode
-                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                }`}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                <span>{selectMode ? '完成' : '批量选择'}</span>
-              </button>
-              <div className="flex items-center gap-1 bg-slate-900 rounded-lg border border-slate-800 p-0.5 flex-wrap justify-end max-w-[min(100%,20rem)]">
-                {groupOptions.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    disabled={opt.disabled}
-                    onClick={() => !opt.disabled && onGroupByChange(opt.value)}
-                    title={opt.disabled ? '当前未发现项目级 Skill 目录' : undefined}
-                    className={`px-3 py-1 rounded-md text-xs transition-all
-                      ${opt.disabled ? 'opacity-40 cursor-not-allowed text-slate-600' : ''}
-                      ${
-                        !opt.disabled && groupBy === opt.value
-                          ? 'bg-slate-700 text-slate-200 shadow-sm'
-                          : !opt.disabled
-                            ? 'text-slate-500 hover:text-slate-300'
-                            : ''
-                      }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <button
+              onClick={onToggleSelectMode}
+              title={selectMode ? '退出批量选择' : '进入批量选择'}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
+                selectMode
+                  ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+              }`}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span>{selectMode ? '完成' : '批量选择'}</span>
+            </button>
           </div>
 
           {selectMode && (
-            <div className="mb-4 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-between gap-3 flex-wrap">
+            <div className="mb-4 shrink-0 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3 text-sm">
                 <span className="text-indigo-300 font-medium">
                   已选 {selectedIds.size} / {skills.length} 个
@@ -231,7 +190,7 @@ export function SkillsHomeView({
 
           {bulkDeleteResult && (
             <div
-              className={`mb-4 p-3 rounded-lg text-sm border flex items-center justify-between ${
+              className={`mb-4 shrink-0 p-3 rounded-lg text-sm border flex items-center justify-between ${
                 bulkDeleteResult.kind === 'ok'
                   ? 'bg-green-500/10 border-green-500/20 text-green-400'
                   : 'bg-red-500/10 border-red-500/20 text-red-400'
@@ -251,36 +210,38 @@ export function SkillsHomeView({
             </div>
           )}
 
-          {loading && skills.length === 0 ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-slate-400 flex flex-col items-center gap-3">
-                <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm">正在扫描 Skills...</span>
-                <span className="text-xs text-slate-600">扫描全局和项目目录中</span>
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain pr-0.5 [-webkit-overflow-scrolling:touch]">
+            {loading && skills.length === 0 ? (
+              <div className="flex h-64 items-center justify-center">
+                <div className="flex flex-col items-center gap-3 text-slate-400">
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                  <span className="text-sm">正在扫描 Skills...</span>
+                  <span className="text-xs text-slate-600">扫描全局和项目目录中</span>
+                </div>
               </div>
-            </div>
-          ) : skills.length === 0 && allSkillsTotal === 0 ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="text-4xl mb-3">🔍</div>
-                <p className="text-slate-300 mb-1">暂无 Skills</p>
-                <p className="text-sm text-slate-500">点击「一键扫描」发现你的 Claude Skills</p>
+            ) : skills.length === 0 && allSkillsTotal === 0 ? (
+              <div className="flex h-64 items-center justify-center">
+                <div className="text-center">
+                  <div className="mb-3 text-4xl">🔍</div>
+                  <p className="mb-1 text-slate-300">暂无 Skills</p>
+                  <p className="text-sm text-slate-500">点击「一键扫描」发现你的 Claude Skills</p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <SkillGrid
-              skills={skills}
-              groupBy={groupBy}
-              onSkillClick={onSkillClick}
-              selectMode={selectMode}
-              selectedIds={selectedIds}
-              onSelectToggle={onSelectToggle}
-              filterActive={listFilterActive}
-              onClearFilters={onClearListFilters}
-            />
-          )}
+            ) : (
+              <SkillGrid
+                skills={skills}
+                groupBy="scope"
+                onSkillClick={onSkillClick}
+                selectMode={selectMode}
+                selectedIds={selectedIds}
+                onSelectToggle={onSelectToggle}
+                filterActive={listFilterActive}
+                onClearFilters={onClearListFilters}
+              />
+            )}
+          </div>
         </main>
       </div>
-    </>
+    </div>
   )
 }

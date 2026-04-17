@@ -1,5 +1,6 @@
 import type { Stats, Project } from '../hooks/useSkills'
 import { AGENT_ORDER, getAgentMeta } from '../agents'
+import { SkillSearchInput } from './SkillSearchInput'
 
 interface SidebarProps {
   stats: Stats
@@ -12,6 +13,8 @@ interface SidebarProps {
   onSourceChange: (v: string) => void
   onAgentChange: (v: string) => void
   onProjectChange: (v: string) => void
+  search: string
+  onSearchChange: (q: string) => void
 }
 
 export function Sidebar({
@@ -25,6 +28,8 @@ export function Sidebar({
   onSourceChange,
   onAgentChange,
   onProjectChange,
+  search,
+  onSearchChange,
 }: SidebarProps) {
   const scopeItems = [
     { value: 'all', label: '全部', count: stats.total },
@@ -56,20 +61,26 @@ export function Sidebar({
   ]
 
   return (
-    <aside className="lg:w-60 shrink-0 space-y-5">
-      {/* Scope */}
-      <FilterSection title="层级">
-        {scopeItems.map((item) => (
-          <FilterButton
-            key={item.value}
-            active={scopeFilter === item.value}
-            onClick={() => onScopeChange(item.value)}
-            label={item.label}
-            count={item.count}
-            icon={scopeIcon(item.value)}
-          />
-        ))}
-      </FilterSection>
+    <aside className="lg:w-60 shrink-0 space-y-5 lg:min-h-0 lg:max-h-full lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+      {/* Scope + keyword search (filters list on the right) */}
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-2 px-1 min-w-0">
+          <h3 className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest shrink-0">层级</h3>
+          <SkillSearchInput value={search} onChange={onSearchChange} size="compact" className="flex-1 max-w-[11rem]" />
+        </div>
+        <div className="space-y-0.5">
+          {scopeItems.map((item) => (
+            <FilterButton
+              key={item.value}
+              active={scopeFilter === item.value}
+              onClick={() => onScopeChange(item.value)}
+              label={item.label}
+              count={item.count}
+              icon={scopeIcon(item.value)}
+            />
+          ))}
+        </div>
+      </div>
 
       {/* Agent type */}
       <FilterSection title="Agent 类型">

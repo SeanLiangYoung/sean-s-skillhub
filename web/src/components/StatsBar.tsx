@@ -17,7 +17,7 @@ export function StatsBar({ stats, projects, conflicts }: StatsBarProps) {
   ]
 
   return (
-    <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+    <div className="grid shrink-0 grid-cols-3 md:grid-cols-6 gap-3 mb-6">
       {cards.map((c) => (
         <div key={c.label} className={`rounded-xl bg-gradient-to-br ${c.bg} border border-slate-800/80 px-4 py-3`}>
           <div className={`text-2xl font-bold ${c.color}`}>{c.value}</div>

@@ -17,7 +17,6 @@ import type { MarketplaceProviderInfo } from './types/marketplace'
 import { MARKETPLACE_PROVIDERS_FALLBACK } from './data/marketplaceFallbackProviders'
 import { Footer } from './components/Footer'
 import type { Skill } from './hooks/useSkills'
-import type { SkillGroupBy } from './types/skillsList'
 import { SkillsHomeView } from './components/SkillsHomeView'
 import { ConflictsPage } from './components/ConflictsPage'
 
@@ -49,7 +48,6 @@ function App() {
   const [projectFilter, setProjectFilter] = useState('all')
   const [conflictOnly, setConflictOnly] = useState(false)
   const [search, setSearch] = useState('')
-  const [groupBy, setGroupBy] = useState<SkillGroupBy>('scope')
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null)
   const [lastUpdate, setLastUpdate] = useState<string | null>(null)
   const [trashCount, setTrashCount] = useState<number>(0)
@@ -108,12 +106,6 @@ function App() {
   useEffect(() => {
     refreshTrashCount()
   }, [refreshTrashCount])
-
-  useEffect(() => {
-    if (groupBy === 'project' && projects.length === 0) {
-      setGroupBy('scope')
-    }
-  }, [groupBy, projects.length])
 
   useWebSocket(
     useCallback(
@@ -247,8 +239,8 @@ function App() {
   }, [selectMode, bulkDeleteConfirm, setBulkDeleteConfirm, setSelectMode, setSelectedIds])
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <header className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-950">
+      <header className="shrink-0 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-[1400px] mx-auto px-6 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-4 flex-wrap">
             <button
@@ -331,31 +323,6 @@ function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            {view === 'skills' && (
-              <div className="relative hidden md:block">
-                <svg
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="搜索 Skills... (名称/描述)"
-                  value={search}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="w-72 pl-9 pr-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-sm text-slate-200
-                             placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all"
-                />
-              </div>
-            )}
-
             <button
               onClick={scan}
               disabled={loading}
@@ -406,13 +373,18 @@ function App() {
         </div>
       </header>
 
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
-        {stats.total > 0 && view !== 'marketplace' && (
+      <div className="flex min-h-0 flex-1 flex-col w-full max-w-[1400px] mx-auto px-6 py-6 min-w-0">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {stats.total > 0 &&
+          view !== 'marketplace' &&
+          view !== 'similar' &&
+          view !== 'conflicts' &&
+          view !== 'trash' && (
           <StatsBar stats={stats} projects={projects} conflicts={conflicts.length} />
         )}
 
         {error && (
-          <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <div className="mb-4 shrink-0 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
             <div className="font-semibold mb-2">扫描失败：{error}</div>
             <div className="text-xs text-red-300/80">
               排查步骤：
@@ -438,12 +410,7 @@ function App() {
         )}
 
         {view === 'marketplace' ? (
-          <MarketplaceView
-            onInstalled={scan}
-            providerId={marketplaceProviderId}
-            onProviderChange={setMarketplaceProviderId}
-            providers={marketplaceProviders}
-          />
+          <MarketplaceView onInstalled={scan} providers={marketplaceProviders} />
         ) : view === 'conflicts' ? (
           <ConflictsPage
             conflicts={conflicts}
@@ -486,9 +453,6 @@ function App() {
             skills={skills}
             allSkillsTotal={stats.total}
             loading={loading}
-            groupBy={groupBy}
-            onGroupByChange={setGroupBy}
-            hasProjectRoots={projects.length > 0}
             conflictCount={conflicts.length}
             onOpenConflicts={() => setView('conflicts')}
             selectMode={selectMode}
@@ -505,6 +469,7 @@ function App() {
             onSkillClick={setSelectedSkill}
           />
         )}
+        </div>
 
         <Footer onAboutClick={() => setAboutOpen(true)} />
       </div>

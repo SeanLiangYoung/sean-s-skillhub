@@ -22,7 +22,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div className="min-h-screen bg-slate-950 text-slate-200 p-8 font-mono">
+        <div className="h-full min-h-0 overflow-y-auto bg-slate-950 text-slate-200 p-8 font-mono">
           <div className="max-w-3xl mx-auto">
             <h1 className="text-2xl font-bold text-red-400 mb-4">
               ⚠️ Skill Hub crashed

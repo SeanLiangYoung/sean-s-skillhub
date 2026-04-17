@@ -9,12 +9,6 @@ interface SettingsModalProps {
   onProviderChange: (id: string) => void
 }
 
-function groupLabel(g: 'http' | 'cli' | 'browse'): string {
-  if (g === 'http') return '应用内（ClawHub API）— 默认无需 LLM'
-  if (g === 'cli') return '本机 CLI'
-  return '浏览与智能体（可选）'
-}
-
 export function SettingsModal({
   open,
   onClose,
@@ -32,10 +26,6 @@ export function SettingsModal({
   }, [open, onClose])
 
   if (!open) return null
-
-  const http = providers.filter((p) => p.group === 'http')
-  const cli = providers.filter((p) => p.group === 'cli')
-  const browse = providers.filter((p) => p.group === 'browse')
 
   return (
     <div
@@ -65,46 +55,39 @@ export function SettingsModal({
           <div>
             <div className="text-sm font-medium text-slate-300">技能市场默认来源</div>
             <p className="text-xs text-slate-500 leading-relaxed mt-1 mb-3">
-              进入「技能市场」时优先展示所选目录；可随时在页面内切换。未配置 LLM 时，请优先使用 ClawHub API
-              类来源。
+              技能市场仅连接官方 ClawHub（可通过环境变量覆盖注册表地址）。
             </p>
           </div>
 
-          {[http, cli, browse].map((list, idx) =>
-            list.length > 0 ? (
-              <div key={idx} className="space-y-2">
-                <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                  {groupLabel(list[0].group)}
-                </div>
-                <div className="flex flex-col gap-2">
-                  {list.map((p) => (
-                    <label
-                      key={p.id}
-                      className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                        providerId === p.id
-                          ? 'border-indigo-500/50 bg-indigo-500/10'
-                          : 'border-slate-800 bg-slate-950/50 hover:border-slate-700'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="marketplace-provider"
-                        checked={providerId === p.id}
-                        onChange={() => onProviderChange(p.id)}
-                        className="mt-1 rounded-full border-slate-600 text-indigo-500 focus:ring-indigo-500/30"
-                      />
-                      <span>
-                        <span className="block text-sm font-medium text-slate-200">{p.label}</span>
-                        {p.description && (
-                          <span className="block text-xs text-slate-500 mt-0.5">{p.description}</span>
-                        )}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ) : null,
-          )}
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">ClawHub</div>
+            <div className="flex flex-col gap-2">
+              {providers.map((p) => (
+                <label
+                  key={p.id}
+                  className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                    providerId === p.id
+                      ? 'border-indigo-500/50 bg-indigo-500/10'
+                      : 'border-slate-800 bg-slate-950/50 hover:border-slate-700'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="marketplace-provider"
+                    checked={providerId === p.id}
+                    onChange={() => onProviderChange(p.id)}
+                    className="mt-1 rounded-full border-slate-600 text-indigo-500 focus:ring-indigo-500/30"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-slate-200">{p.label}</span>
+                    {p.description && (
+                      <span className="block text-xs text-slate-500 mt-0.5">{p.description}</span>
+                    )}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
         </section>
 
         <div className="mt-8 flex justify-end">

@@ -25,8 +25,8 @@ export function ConflictsPage({
   onBulkDelete,
 }: ConflictsPageProps) {
   return (
-    <>
-      <div className="flex items-center justify-end mb-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="mb-4 flex shrink-0 items-center justify-end">
         <button
           onClick={toggleSelectMode}
           title={selectMode ? '退出批量选择' : '进入批量选择'}
@@ -52,6 +52,6 @@ export function ConflictsPage({
         onSelectToggle={onSelectToggle}
         onBulkDelete={onBulkDelete}
       />
-    </>
+    </div>
   )
 }

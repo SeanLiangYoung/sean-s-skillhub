@@ -12,7 +12,7 @@ export function Dashboard({ stats, projects, conflicts, skills }: DashboardProps
   const categories = categorizeSkills(skills)
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-y-contain">
       {/* Source Distribution */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card title="来源分布">

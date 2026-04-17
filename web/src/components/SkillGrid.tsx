@@ -76,7 +76,7 @@ export function SkillGrid({
 
   if (groupBy === 'none') {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {skills.map(renderCard)}
       </div>
     )
@@ -119,7 +119,7 @@ export function SkillGrid({
             </span>
             <div className="flex-1 h-px bg-slate-800/60" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {groupSkills.map(renderCard)}
           </div>
         </div>

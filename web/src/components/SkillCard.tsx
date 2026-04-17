@@ -36,7 +36,7 @@ export function SkillCard({ skill, onClick, selectMode, selected, onSelectToggle
   return (
     <div
       onClick={handleClick}
-      className={`group relative rounded-xl border p-4 cursor-pointer transition-all duration-200
+      className={`group relative min-w-0 rounded-xl border p-4 cursor-pointer transition-all duration-200
         ${selected
           ? 'border-indigo-500 bg-indigo-500/10 ring-2 ring-indigo-500/40'
           : skill.enabled

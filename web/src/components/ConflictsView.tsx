@@ -47,31 +47,31 @@ export function ConflictsView({ conflicts, onSkillClick, onDelete, busy, selectM
   }
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Header */}
-      <div className="mb-6 p-5 rounded-xl border border-amber-500/40 bg-amber-500/10">
+      <div className="mb-4 shrink-0 p-5 rounded-xl border border-amber-500/40 bg-amber-500/10">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-semibold text-amber-300 flex items-center gap-2 mb-2">
+            <h2 className="text-base font-semibold text-amber-200 flex items-center gap-2 mb-2">
               <span>⚠</span>
               <span>同名 Skill 冲突</span>
             </h2>
             <p className="text-sm text-slate-200 leading-relaxed">
               多个 Skill 使用同一个名字时,AI 工具(Claude Code / Codex 等)
-              <strong className="text-amber-300 font-semibold"> 无法判断加载哪一个</strong>,
+              <strong className="text-amber-200 font-semibold"> 无法判断加载哪一个</strong>,
               常见表现是:调用时加载的不是你期望的版本,或某个 Skill 被静默忽略。
             </p>
             <p className="text-sm text-slate-200 leading-relaxed mt-2">
-              <strong className="text-amber-300 font-semibold">处理方式:</strong>
+              <strong className="text-amber-200 font-semibold">处理方式:</strong>
               在每组中保留一个主版本,其他的<strong className="text-slate-100">移到回收站</strong>(7 天内可恢复)。
             </p>
-            <p className="text-xs text-amber-200/80 leading-relaxed mt-2 bg-amber-500/10 rounded px-2 py-1.5 border border-amber-500/20">
-              ⓘ 注意:Claude Code 的「禁用」机制是按 <code className="font-mono bg-slate-950/50 px-1 rounded">skill 名字</code> 生效的,<strong>无法单独禁用某一个副本</strong>(禁用一个等于禁用同名的全部)。所以冲突只能通过删除多余副本来解决。
+            <p className="text-xs text-slate-300 leading-relaxed mt-2 bg-amber-950/20 rounded px-2 py-1.5 border border-amber-500/25">
+              ⓘ 注意:Claude Code 的「禁用」机制是按 <code className="font-mono bg-slate-950/60 px-1 rounded text-slate-200">skill 名字</code> 生效的,<strong className="text-slate-100">无法单独禁用某一个副本</strong>(禁用一个等于禁用同名的全部)。所以冲突只能通过删除多余副本来解决。
             </p>
           </div>
           <div className="text-right shrink-0 border-l border-amber-500/20 pl-4">
-            <div className="text-3xl font-bold text-amber-300 tabular-nums leading-none">{conflicts.length}</div>
-            <div className="text-[11px] uppercase tracking-wider text-amber-200 mt-1">冲突组</div>
+            <div className="text-3xl font-bold text-amber-200 tabular-nums leading-none">{conflicts.length}</div>
+            <div className="text-[11px] uppercase tracking-wider text-slate-400 mt-1">冲突组</div>
             <div className="text-[11px] text-slate-400 mt-1">共 {total} 个 Skill</div>
           </div>
         </div>
@@ -80,7 +80,7 @@ export function ConflictsView({ conflicts, onSkillClick, onDelete, busy, selectM
         {selectMode && (
           <div className="mt-4 pt-4 border-t border-amber-500/20 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 text-sm">
-              <span className="text-amber-300 font-medium">
+              <span className="text-amber-200 font-medium">
                 已选 {selectedCount} / {total} 个
               </span>
               <button
@@ -108,28 +108,30 @@ export function ConflictsView({ conflicts, onSkillClick, onDelete, busy, selectM
         )}
       </div>
 
-      {conflicts.length === 0 && (
-        <div className="text-center py-16 text-slate-500">
+      {conflicts.length === 0 ? (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center py-12 text-center text-slate-500">
           <div className="text-4xl mb-3">✨</div>
           <p className="text-sm">没有同名冲突</p>
           <p className="text-xs text-slate-600 mt-1">所有 Skill 的名字都是唯一的</p>
         </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [-webkit-overflow-scrolling:touch]">
+          <div className="space-y-4 pb-2">
+            {conflicts.map((group) => (
+              <ConflictGroupCard
+                key={group.name}
+                group={group}
+                onSkillClick={onSkillClick}
+                onDelete={onDelete}
+                busy={busy}
+                selectMode={selectMode}
+                selectedIds={selectedIds}
+                onSelectToggle={onSelectToggle}
+              />
+            ))}
+          </div>
+        </div>
       )}
-
-      <div className="space-y-4">
-        {conflicts.map((group) => (
-          <ConflictGroupCard
-            key={group.name}
-            group={group}
-            onSkillClick={onSkillClick}
-            onDelete={onDelete}
-            busy={busy}
-            selectMode={selectMode}
-            selectedIds={selectedIds}
-            onSelectToggle={onSelectToggle}
-          />
-        ))}
-      </div>
     </div>
   )
 }
@@ -163,8 +165,8 @@ function ConflictGroupCard({
         </div>
       </div>
 
-      {/* Rows */}
-      <div className="divide-y divide-slate-800/80">
+      {/* Rows：单组副本多时在卡片内滚动，避免单卡过高 */}
+      <div className="max-h-[min(24rem,45vh)] divide-y divide-slate-800/80 overflow-y-auto overscroll-y-contain">
         {group.skills.map((skill) => (
           <ConflictRow
             key={skill.id}

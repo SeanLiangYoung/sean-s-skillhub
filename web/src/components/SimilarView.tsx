@@ -47,7 +47,7 @@ export function SimilarView({ onSkillClick }: Props) {
   }
 
   return (
-    <div>
+    <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
       {/* Header */}
       <div className="mb-6 p-4 rounded-xl border border-slate-800 bg-slate-900/40">
         <div className="flex items-start justify-between gap-4 mb-3">
@@ -55,10 +55,6 @@ export function SimilarView({ onSkillClick }: Props) {
             <h2 className="text-base font-semibold text-slate-100 flex items-center gap-2">
               🔍 相似 Skill 检测
             </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              通过关键词重叠度（Jaccard）识别可能在做同一件事的 Skill。阈值越高越严格。
-              支持同义词归一（小红书 ↔ XHS ↔ RedNote 等）。
-            </p>
           </div>
           <div className="text-right shrink-0">
             <div className="text-2xl font-bold text-purple-400">{groups.length}</div>
