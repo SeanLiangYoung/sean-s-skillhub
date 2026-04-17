@@ -2,15 +2,13 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSkills } from './hooks/useSkills'
 import { useWebSocket } from './hooks/useWebSocket'
 import { useTheme } from './hooks/useTheme'
+import { useBulkSkillActions } from './hooks/useBulkSkillActions'
 import { StatsBar } from './components/StatsBar'
-import { Sidebar } from './components/Sidebar'
-import { SkillGrid } from './components/SkillGrid'
 import { SkillDetail } from './components/SkillDetail'
 import { Dashboard } from './components/Dashboard'
 import { SimilarView } from './components/SimilarView'
 import { TrashView } from './components/TrashView'
 import { MarketplaceView } from './components/MarketplaceView'
-import { ConflictsView } from './components/ConflictsView'
 import { AboutModal } from './components/AboutModal'
 import { SettingsModal } from './components/SettingsModal'
 import { useMarketplaceProvider } from './hooks/useMarketplaceProvider'
@@ -18,9 +16,10 @@ import type { MarketplaceProviderInfo } from './types/marketplace'
 import { MARKETPLACE_PROVIDERS_FALLBACK } from './data/marketplaceFallbackProviders'
 import { Footer } from './components/Footer'
 import type { Skill } from './hooks/useSkills'
-
-type GroupBy = 'none' | 'scope' | 'source' | 'project'
-type View = 'skills' | 'similar' | 'dashboard' | 'trash' | 'conflicts' | 'clawhub'
+import type { AppView } from './types/appView'
+import type { SkillGroupBy } from './types/skillsList'
+import { SkillsHomeView } from './components/SkillsHomeView'
+import { ConflictsPage } from './components/ConflictsPage'
 
 function App() {
   const { allSkills, skills, stats, projects, conflicts, loading, error, scan, filterSkills } = useSkills()
@@ -43,22 +42,17 @@ function App() {
       })
   }, [])
 
-  const [view, setView] = useState<View>('skills')
+  const [view, setView] = useState<AppView>('skills')
   const [scopeFilter, setScopeFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [agentFilter, setAgentFilter] = useState('all')
   const [projectFilter, setProjectFilter] = useState('all')
   const [conflictOnly, setConflictOnly] = useState(false)
   const [search, setSearch] = useState('')
-  const [groupBy, setGroupBy] = useState<GroupBy>('scope')
+  const [groupBy, setGroupBy] = useState<SkillGroupBy>('scope')
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null)
   const [lastUpdate, setLastUpdate] = useState<string | null>(null)
   const [trashCount, setTrashCount] = useState<number>(0)
-  const [selectMode, setSelectMode] = useState<boolean>(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState<boolean>(false)
-  const [bulkDeleting, setBulkDeleting] = useState<boolean>(false)
-  const [bulkDeleteResult, setBulkDeleteResult] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [conflictRowBusy, setConflictRowBusy] = useState<Set<string>>(new Set())
   const [aboutOpen, setAboutOpen] = useState<boolean>(false)
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
@@ -68,6 +62,37 @@ function App() {
     } catch {
       return true
     }
+  })
+
+  const refreshTrashCount = useCallback(async () => {
+    try {
+      const res = await fetch('/api/trash')
+      const data = await res.json()
+      if (data.ok) setTrashCount((data.items || []).length)
+    } catch {}
+  }, [])
+
+  const {
+    selectMode,
+    setSelectMode,
+    selectedIds,
+    setSelectedIds,
+    bulkDeleteConfirm,
+    setBulkDeleteConfirm,
+    bulkDeleting,
+    bulkDeleteResult,
+    setBulkDeleteResult,
+    toggleSelectMode,
+    handleSelectToggle,
+    selectAllVisible,
+    clearSelection,
+    performBulkDelete,
+  } = useBulkSkillActions({
+    view,
+    allSkills,
+    skills,
+    scan,
+    refreshTrashCount,
   })
 
   useEffect(() => {
@@ -80,23 +105,19 @@ function App() {
     scan()
   }, [scan])
 
-  // Fetch trash count for the badge
-  const refreshTrashCount = useCallback(async () => {
-    try {
-      const res = await fetch('/api/trash')
-      const data = await res.json()
-      if (data.ok) setTrashCount((data.items || []).length)
-    } catch {}
-  }, [])
-
   useEffect(() => {
     refreshTrashCount()
   }, [refreshTrashCount])
 
-  // WebSocket: auto-refresh on file changes
+  useEffect(() => {
+    if (groupBy === 'project' && projects.length === 0) {
+      setGroupBy('scope')
+    }
+  }, [groupBy, projects.length])
+
   useWebSocket(
     useCallback(
-      (data: any) => {
+      (data: { type?: string }) => {
         if (data.type === 'change') {
           setLastUpdate(new Date().toLocaleTimeString('zh-CN'))
           scan()
@@ -107,7 +128,14 @@ function App() {
   )
 
   const applyFilters = useCallback(
-    (overrides?: { scope?: string; source?: string; agent?: string; project?: string; search?: string; conflictOnly?: boolean }) => {
+    (overrides?: {
+      scope?: string
+      source?: string
+      agent?: string
+      project?: string
+      search?: string
+      conflictOnly?: boolean
+    }) => {
       filterSkills({
         scope: overrides?.scope ?? scopeFilter,
         source: overrides?.source ?? sourceFilter,
@@ -176,71 +204,6 @@ function App() {
     })
   }, [filterSkills])
 
-  // Batch selection handlers
-  const toggleSelectMode = () => {
-    setSelectMode((prev) => {
-      if (prev) setSelectedIds(new Set())
-      return !prev
-    })
-    setBulkDeleteResult(null)
-  }
-
-  const handleSelectToggle = useCallback((skill: Skill) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(skill.id)) next.delete(skill.id)
-      else next.add(skill.id)
-      return next
-    })
-  }, [])
-
-  const selectAllVisible = () => {
-    setSelectedIds(new Set(skills.map((s) => s.id)))
-  }
-
-  const clearSelection = () => {
-    setSelectedIds(new Set())
-  }
-
-  const performBulkDelete = async () => {
-    setBulkDeleting(true)
-    setBulkDeleteResult(null)
-    try {
-      const items = Array.from(selectedIds)
-        .map((id) => allSkills.find((s) => s.id === id))
-        .filter((s): s is Skill => !!s)
-        .map((s) => ({ id: s.id, path: s.path, skillName: s.name }))
-
-      const res = await fetch('/api/skills/batch/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items }),
-      })
-      const data = await res.json()
-      if (!data.ok && !data.results) {
-        setBulkDeleteResult({ kind: 'err', text: data.error || '批量删除失败' })
-        return
-      }
-      const okCount: number = data.okCount ?? 0
-      const failCount: number = data.failCount ?? 0
-      if (failCount === 0) {
-        setBulkDeleteResult({ kind: 'ok', text: `已删除 ${okCount} 个 Skill,可在回收站恢复` })
-      } else {
-        setBulkDeleteResult({ kind: 'err', text: `成功 ${okCount},失败 ${failCount}` })
-      }
-      setBulkDeleteConfirm(false)
-      setSelectedIds(new Set())
-      setSelectMode(false)
-      await scan()
-      await refreshTrashCount()
-    } catch (e: any) {
-      setBulkDeleteResult({ kind: 'err', text: e?.message || '请求失败' })
-    } finally {
-      setBulkDeleting(false)
-    }
-  }
-
-  // Conflict row actions — reuse existing endpoints, track per-row busy state
   const withConflictBusy = async (skill: Skill, fn: () => Promise<void>) => {
     setConflictRowBusy((prev) => new Set(prev).add(skill.id))
     try {
@@ -268,8 +231,6 @@ function App() {
       if (!data.ok) throw new Error(data.error)
     })
 
-
-  // Keyboard shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -283,14 +244,13 @@ function App() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [selectMode, bulkDeleteConfirm])
+  }, [selectMode, bulkDeleteConfirm, setBulkDeleteConfirm, setSelectMode, setSelectedIds])
 
   return (
     <div className="min-h-screen bg-slate-950">
-      {/* Header */}
       <header className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-[1400px] mx-auto px-6 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <button
               onClick={() => setAboutOpen(true)}
               title="关于 Skill Hub"
@@ -306,8 +266,7 @@ function App() {
               </div>
             </button>
 
-            {/* View switcher */}
-            <div className="flex items-center gap-0.5 bg-slate-900 rounded-lg border border-slate-800 p-0.5 ml-4">
+            <div className="flex items-center gap-0.5 bg-slate-900 rounded-lg border border-slate-800 p-0.5 ml-4 flex-wrap">
               <button
                 onClick={() => setView('skills')}
                 className={`px-3 py-1 rounded-md text-xs transition-all ${
@@ -332,10 +291,25 @@ function App() {
               >
                 仪表盘
               </button>
+              {conflicts.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setView('conflicts')}
+                  title="查看同名冲突"
+                  className={`px-3 py-1 rounded-md text-xs transition-all flex items-center gap-1.5 ${
+                    view === 'conflicts' ? 'bg-slate-700 text-slate-200 shadow-sm' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <span>冲突</span>
+                  <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-semibold">
+                    {conflicts.length}
+                  </span>
+                </button>
+              )}
               <button
-                onClick={() => setView('clawhub')}
+                onClick={() => setView('marketplace')}
                 className={`px-3 py-1 rounded-md text-xs transition-all ${
-                  view === 'clawhub' ? 'bg-slate-700 text-slate-200 shadow-sm' : 'text-slate-500 hover:text-slate-300'
+                  view === 'marketplace' ? 'bg-slate-700 text-slate-200 shadow-sm' : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
                 技能市场
@@ -361,7 +335,12 @@ function App() {
               <div className="relative hidden md:block">
                 <svg
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
                 >
                   <circle cx="11" cy="11" r="8" />
                   <path d="m21 21-4.3-4.3" />
@@ -407,7 +386,6 @@ function App() {
               </svg>
             </button>
 
-            {/* Theme toggle */}
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
@@ -415,7 +393,8 @@ function App() {
             >
               {theme === 'dark' ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="5" /><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                  <circle cx="12" cy="12" r="5" />
+                  <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
                 </svg>
               ) : (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -428,7 +407,6 @@ function App() {
       </header>
 
       <div className="max-w-[1400px] mx-auto px-6 py-6">
-        {/* Stats */}
         {stats.total > 0 && (
           <StatsBar stats={stats} projects={projects} conflicts={conflicts.length} />
         )}
@@ -439,7 +417,13 @@ function App() {
             <div className="text-xs text-red-300/80">
               排查步骤：
               <ol className="list-decimal list-inside mt-1 space-y-0.5">
-                <li>访问 <a href="/api/debug" target="_blank" rel="noreferrer" className="underline">/api/debug</a> 查看服务端状态</li>
+                <li>
+                  访问{' '}
+                  <a href="/api/debug" target="_blank" rel="noreferrer" className="underline">
+                    /api/debug
+                  </a>{' '}
+                  查看服务端状态
+                </li>
                 <li>打开浏览器 DevTools Console 看是否有网络错误</li>
                 <li>检查终端日志是否有 Node 错误</li>
               </ol>
@@ -453,8 +437,7 @@ function App() {
           </div>
         )}
 
-        {/* Dashboard view */}
-        {view === 'clawhub' ? (
+        {view === 'marketplace' ? (
           <MarketplaceView
             onInstalled={scan}
             providerId={marketplaceProviderId}
@@ -462,34 +445,17 @@ function App() {
             providers={marketplaceProviders}
           />
         ) : view === 'conflicts' ? (
-          <>
-            <div className="flex items-center justify-end mb-4">
-              <button
-                onClick={toggleSelectMode}
-                title={selectMode ? '退出批量选择' : '进入批量选择'}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
-                  selectMode
-                    ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                }`}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                <span>{selectMode ? '完成' : '批量选择'}</span>
-              </button>
-            </div>
-            <ConflictsView
-              conflicts={conflicts}
-              onSkillClick={setSelectedSkill}
-              onDelete={handleConflictDelete}
-              busy={conflictRowBusy}
-              selectMode={selectMode}
-              selectedIds={selectedIds}
-              onSelectToggle={handleSelectToggle}
-              onBulkDelete={() => setBulkDeleteConfirm(true)}
-            />
-          </>
+          <ConflictsPage
+            conflicts={conflicts}
+            onSkillClick={setSelectedSkill}
+            onDelete={handleConflictDelete}
+            conflictRowBusy={conflictRowBusy}
+            selectMode={selectMode}
+            toggleSelectMode={toggleSelectMode}
+            selectedIds={selectedIds}
+            onSelectToggle={handleSelectToggle}
+            onBulkDelete={() => setBulkDeleteConfirm(true)}
+          />
         ) : view === 'dashboard' ? (
           <Dashboard stats={stats} projects={projects} conflicts={conflicts} skills={allSkills} />
         ) : view === 'similar' ? (
@@ -502,209 +468,47 @@ function App() {
             }}
           />
         ) : (
-          <>
-            {/* Mobile search */}
-            <div className="md:hidden mb-4">
-              <input
-                type="text"
-                placeholder="搜索 Skills..."
-                value={search}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-sm text-slate-200
-                           placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 transition-colors"
-              />
-            </div>
-
-            <div className="flex flex-col lg:flex-row gap-6">
-              {/* Sidebar */}
-              {sidebarOpen && (
-                <Sidebar
-                  stats={stats}
-                  projects={projects}
-                  scopeFilter={scopeFilter}
-                  sourceFilter={sourceFilter}
-                  agentFilter={agentFilter}
-                  projectFilter={projectFilter}
-                  onScopeChange={handleScopeChange}
-                  onSourceChange={handleSourceChange}
-                  onAgentChange={handleAgentChange}
-                  onProjectChange={handleProjectChange}
-                />
-              )}
-
-              {/* Main */}
-              <main className="flex-1 min-w-0">
-                {/* Toolbar */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setSidebarOpen((v) => !v)}
-                      title={sidebarOpen ? '收起侧边栏' : '展开侧边栏'}
-                      aria-label={sidebarOpen ? '收起侧边栏' : '展开侧边栏'}
-                      className="p-1.5 rounded-md border border-slate-800 bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        {sidebarOpen ? (
-                          <>
-                            <rect x="3" y="3" width="18" height="18" rx="2" />
-                            <line x1="9" y1="3" x2="9" y2="21" />
-                          </>
-                        ) : (
-                          <>
-                            <line x1="3" y1="12" x2="21" y2="12" />
-                            <line x1="3" y1="6" x2="21" y2="6" />
-                            <line x1="3" y1="18" x2="21" y2="18" />
-                          </>
-                        )}
-                      </svg>
-                    </button>
-                    <span className="text-sm text-slate-500">
-                      共 <span className="text-slate-300 font-medium">{skills.length}</span> 个 Skill
-                    </span>
-                    {conflicts.length > 0 && (
-                      <button
-                        onClick={() => setView('conflicts')}
-                        title="查看同名冲突详情与处理方式"
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                        <span>{conflicts.length} 组冲突 →</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={toggleSelectMode}
-                      title={selectMode ? '退出批量选择' : '进入批量选择'}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
-                        selectMode
-                          ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                      }`}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      <span>{selectMode ? '完成' : '批量选择'}</span>
-                    </button>
-                    <div className="flex items-center gap-1 bg-slate-900 rounded-lg border border-slate-800 p-0.5">
-                      {([
-                        { value: 'scope', label: '按层级' },
-                        { value: 'source', label: '按来源' },
-                        { value: 'none', label: '平铺' },
-                      ] as { value: GroupBy; label: string }[]).map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => setGroupBy(opt.value)}
-                          className={`px-3 py-1 rounded-md text-xs transition-all
-                            ${groupBy === opt.value
-                              ? 'bg-slate-700 text-slate-200 shadow-sm'
-                              : 'text-slate-500 hover:text-slate-300'
-                            }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Batch action bar (shown only in select mode) */}
-                {selectMode && (
-                  <div className="mb-4 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-3 text-sm">
-                      <span className="text-indigo-300 font-medium">
-                        已选 {selectedIds.size} / {skills.length} 个
-                      </span>
-                      <button
-                        onClick={selectAllVisible}
-                        disabled={skills.length === 0}
-                        className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-40"
-                      >
-                        全选当前视图
-                      </button>
-                      {selectedIds.size > 0 && (
-                        <button
-                          onClick={clearSelection}
-                          className="text-xs text-slate-400 hover:text-slate-200"
-                        >
-                          取消选择
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setBulkDeleteConfirm(true)}
-                        disabled={selectedIds.size === 0}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/15 hover:bg-red-500/25 disabled:opacity-40 disabled:cursor-not-allowed border border-red-500/30 rounded-md text-xs font-medium text-red-300 transition-all"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
-                        <span>删除所选 ({selectedIds.size})</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {bulkDeleteResult && (
-                  <div
-                    className={`mb-4 p-3 rounded-lg text-sm border flex items-center justify-between ${
-                      bulkDeleteResult.kind === 'ok'
-                        ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                        : 'bg-red-500/10 border-red-500/20 text-red-400'
-                    }`}
-                  >
-                    <span>{bulkDeleteResult.kind === 'ok' ? '✓ ' : '✗ '}{bulkDeleteResult.text}</span>
-                    <button
-                      onClick={() => setBulkDeleteResult(null)}
-                      className="text-xs opacity-60 hover:opacity-100"
-                    >
-                      关闭
-                    </button>
-                  </div>
-                )}
-
-                {/* Content */}
-                {loading && skills.length === 0 ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-slate-400 flex flex-col items-center gap-3">
-                      <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-sm">正在扫描 Skills...</span>
-                      <span className="text-xs text-slate-600">扫描全局和项目目录中</span>
-                    </div>
-                  </div>
-                ) : skills.length === 0 && stats.total === 0 ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-center">
-                      <div className="text-4xl mb-3">🔍</div>
-                      <p className="text-slate-300 mb-1">暂无 Skills</p>
-                      <p className="text-sm text-slate-500">点击「一键扫描」发现你的 Claude Skills</p>
-                    </div>
-                  </div>
-                ) : (
-                  <SkillGrid
-                    skills={skills}
-                    groupBy={groupBy}
-                    onSkillClick={setSelectedSkill}
-                    selectMode={selectMode}
-                    selectedIds={selectedIds}
-                    onSelectToggle={handleSelectToggle}
-                    filterActive={listFilterActive}
-                    onClearFilters={clearListFilters}
-                  />
-                )}
-              </main>
-            </div>
-          </>
+          <SkillsHomeView
+            search={search}
+            onSearchChange={handleSearch}
+            sidebarOpen={sidebarOpen}
+            onSidebarOpenToggle={() => setSidebarOpen((v) => !v)}
+            stats={stats}
+            projects={projects}
+            scopeFilter={scopeFilter}
+            sourceFilter={sourceFilter}
+            agentFilter={agentFilter}
+            projectFilter={projectFilter}
+            onScopeChange={handleScopeChange}
+            onSourceChange={handleSourceChange}
+            onAgentChange={handleAgentChange}
+            onProjectChange={handleProjectChange}
+            skills={skills}
+            allSkillsTotal={stats.total}
+            loading={loading}
+            groupBy={groupBy}
+            onGroupByChange={setGroupBy}
+            hasProjectRoots={projects.length > 0}
+            conflictCount={conflicts.length}
+            onOpenConflicts={() => setView('conflicts')}
+            selectMode={selectMode}
+            onToggleSelectMode={toggleSelectMode}
+            selectedIds={selectedIds}
+            onSelectToggle={handleSelectToggle}
+            onSelectAllVisible={selectAllVisible}
+            onClearSelection={clearSelection}
+            onBulkDeleteClick={() => setBulkDeleteConfirm(true)}
+            bulkDeleteResult={bulkDeleteResult}
+            onDismissBulkDeleteResult={() => setBulkDeleteResult(null)}
+            listFilterActive={listFilterActive}
+            onClearListFilters={clearListFilters}
+            onSkillClick={setSelectedSkill}
+          />
         )}
 
         <Footer onAboutClick={() => setAboutOpen(true)} />
       </div>
 
-      {/* About modal */}
       <AboutModal
         open={aboutOpen}
         onClose={() => setAboutOpen(false)}
@@ -720,7 +524,6 @@ function App() {
         onProviderChange={setMarketplaceProviderId}
       />
 
-      {/* Bulk delete confirm */}
       {bulkDeleteConfirm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 space-y-4">
@@ -766,7 +569,6 @@ function App() {
         </div>
       )}
 
-      {/* Detail modal */}
       {selectedSkill && (
         <SkillDetail
           skill={selectedSkill}

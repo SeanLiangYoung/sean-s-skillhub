@@ -1,9 +1,10 @@
 import { SkillCard } from './SkillCard'
 import type { Skill } from '../hooks/useSkills'
+import type { SkillGroupBy } from '../types/skillsList'
 
 interface SkillGridProps {
   skills: Skill[]
-  groupBy: 'none' | 'scope' | 'source' | 'project'
+  groupBy: SkillGroupBy
   onSkillClick: (skill: Skill) => void
   selectMode?: boolean
   selectedIds?: Set<string>
@@ -25,6 +26,10 @@ const groupLabels: Record<string, Record<string, string>> = {
     local: '🟢 本地',
     symlink: '🔗 符号链接',
     unknown: '⚪ 未知',
+  },
+  project: {
+    全局: '🌐 全局',
+    未知项目: '📂 未知项目',
   },
 }
 
