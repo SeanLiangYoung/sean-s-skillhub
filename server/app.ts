@@ -12,8 +12,8 @@ import { versionRoutes } from './routes/versions.js'
 import { similarityRoutes } from './routes/similarity.js'
 import { trashRoutes } from './routes/trash.js'
 import { clawhubRoutes } from './routes/clawhub.js'
-import { skillhubCnRoutes } from './routes/skillhubCn.js'
 import { marketplaceRoutes } from './routes/marketplace.js'
+import { skillHubDocsRoutes } from './routes/skillHubDocs.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -46,8 +46,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(similarityRoutes)
   await app.register(trashRoutes)
   await app.register(clawhubRoutes)
-  await app.register(skillhubCnRoutes)
   await app.register(marketplaceRoutes)
+  await app.register(skillHubDocsRoutes)
 
   app.get('/api/health', async () => ({ status: 'ok' }))
 
