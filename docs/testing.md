@@ -1,6 +1,6 @@
 # 测试计划与用例
 
-本文档与 [HTTP API](./api.md)、[架构概览](./architecture.md)、[开发与调试](./development.md) 及需求说明（扫描、管理、版本、市场等能力）对齐，用于**手工回归**与后续**自动化**落地。当前仓库尚未接入自动化测试运行器；文末给出推荐工具与落地顺序。
+本文档与 [HTTP API](./api.md)、[架构概览](./architecture.md)、[开发与调试](./development.md) 及需求说明（扫描、管理、版本、市场等能力）对齐，用于手工回归与自动化。仓库已使用 **Vitest**（`npm test`）、**Playwright**（`npm run test:e2e`，需先 `npm run build`）与 [GitHub Actions CI](../.github/workflows/ci.yml)；文末补充可扩展的落地建议。
 
 ## 1. 测试目标与范围
 
@@ -47,7 +47,7 @@
 在仓库外或 `fixtures/`（若后续加入）准备：
 
 - **最小 skill**：含合法 `SKILL.md`（front matter 可选）的目录。  
-  若使用 `SKILL_HUB_EXTRA_PATHS`，路径须指向**父目录**：其下每个**子文件夹**为一项 skill（与 `~/.claude/skills/` 布局一致）。仓库内示例见 `test/fixtures/extra-skills-root/minimal/SKILL.md`。
+若使用 `SKILL_HUB_EXTRA_PATHS`，路径须指向**父目录**：其下每个**子文件夹**为一项 skill（与 `~/.claude/skills/` 布局一致）。仓库内示例见 `test/fixtures/extra-skills-root/minimal/SKILL.md`。
 - **同名冲突**：两个路径下同名 skill 目录。
 - **相似内容**：两段高度相似的 `SKILL.md` 用于相似度列表非空。
 - **settings**：可备份后替换的 `settings.json` 片段用于验证 `permissions.deny`。
@@ -85,13 +85,13 @@
 ### 5.2 扫描与列表（TC-SCAN）
 
 
-| ID          | 优先级 | 前置                      | 步骤                                             | 期望                               |
-| ----------- | --- | ----------------------- | ---------------------------------------------- | -------------------------------- |
-| TC-SCAN-001 | P0  | fixture 含至少 1 个 skill   | GET `/api/scan` 再 GET `/api/skills`            | `ok`；列表非空；条目含 id、path、name 等关键字段 |
-| TC-SCAN-002 | P1  | 同上                      | GET `/api/skills?search=<关键词>`                 | 仅返回名称/描述匹配项（行为与实现一致）             |
-| TC-SCAN-003 | P1  | 多 scope fixture         | 分别带 `scope=`、`source=`、`agent=`、`project=` 查询  | 过滤结果与参数一致；空集时返回空数组而非报错           |
-| TC-SCAN-004 | P1  | 同上                      | GET `/api/stats`、`/api/projects`、`/api/agents` | 与列表聚合一致、无矛盾                      |
-| TC-SCAN-005 | P2  | 向 fixture 目录新增 skill 文件 | 点击「一键扫描」或 POST 触发扫描                            | 新 skill 出现；与 TC-WS-001 可合并验证     |
+| ID          | 优先级 | 前置                      | 步骤                                             | 期望                                              |
+| ----------- | --- | ----------------------- | ---------------------------------------------- | ----------------------------------------------- |
+| TC-SCAN-001 | P0  | fixture 含至少 1 个 skill   | GET `/api/scan` 再 GET `/api/skills`            | `ok`；列表非空；条目含 id、path、name 等关键字段                |
+| TC-SCAN-002 | P1  | 同上                      | GET `/api/skills?search=<关键词>`                 | 仅返回名称/描述匹配项（行为与实现一致）                            |
+| TC-SCAN-003 | P1  | 多 scope fixture         | 分别带 `scope=`、`source=`、`agent=`、`search=` 查询   | 过滤结果与参数一致；空集时返回空数组而非报错（当前 API 无 `project` 查询参数） |
+| TC-SCAN-004 | P1  | 同上                      | GET `/api/stats`、`/api/projects`、`/api/agents` | 与列表聚合一致、无矛盾                                     |
+| TC-SCAN-005 | P2  | 向 fixture 目录新增 skill 文件 | 点击「一键扫描」或 POST 触发扫描                            | 新 skill 出现；与 TC-WS-001 可合并验证                    |
 
 
 ### 5.3 编辑与管理（TC-MGT）
@@ -211,15 +211,15 @@
 - `npm test` 通过（若改动触及服务端逻辑或市场 URL 校验）  
 - `npm run build` 成功
 
-## 8. 自动化落地建议（可选）
+## 8. 自动化落地建议（可选扩展）
 
 
-| 顺序  | 内容                                                                                                                           |
-| --- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 1   | 引入 **Vitest**，对 `server/marketplace/ssrf.ts`、`presets` 解析等纯逻辑做单测                                                             |
-| 2   | 使用 **Fastify `inject`** 对 `/api/health`、`/api/marketplace/providers`、需 fixture 的 skills 路由做集成测试（临时 `chdir` + 环境变量指向 fixture） |
-| 3   | **Playwright** — `e2e/smoke.spec.ts`（首页、fixture skill、`/api/health`）；先 `npm run build` 再 `npm run test:e2e` |
-| 4   | CI — `.github/workflows/ci.yml`：`npm test` → `npm run build` → `playwright install --with-deps chromium` → `npm run test:e2e` |
+| 状态  | 内容                                                                                                                      |
+| --- | ----------------------------------------------------------------------------------------------------------------------- |
+| 已有  | **Vitest**：`server/marketplace/ssrf.test.ts` 等；`server/api.integration.test.ts` 使用 Fastify `inject`                     |
+| 已有  | **Playwright**：`e2e/smoke.spec.ts`；先 `npm run build` 再 `npm run test:e2e`                                               |
+| 已有  | **CI**：`.github/workflows/ci.yml` 依次 `npm ci` → `npm test` → `npm run build` → Playwright Chromium → `npm run test:e2e` |
+| 可选  | 扩大 `inject` 覆盖（fixture 目录 + 环境变量）、增加 UI 场景与视觉回归                                                                         |
 
 
 ---

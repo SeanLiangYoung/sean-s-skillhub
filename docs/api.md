@@ -14,7 +14,7 @@
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/scan` | 触发全量扫描并更新缓存，返回完整扫描结果 |
-| GET | `/api/skills` | 列出技能；查询参数可选：`scope`、`source`、`agent`、`search` |
+| GET | `/api/skills` | 列出技能；查询参数可选：`scope`、`source`、`agent`、`search`（无 `project` 参数） |
 | GET | `/api/skills/:id` | 单个技能详情 |
 | GET | `/api/agents` | 支持的 Agent 列表（供筛选 UI） |
 | GET | `/api/projects` | 已发现的项目列表 |

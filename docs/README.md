@@ -9,3 +9,5 @@
 | [开发与调试](./development.md) | 本地开发、环境变量、排错流程 |
 | [测试计划与用例](./testing.md) | 测试层级、fixture、需求追溯、用例表与发布前检查 |
 | [智能体扩展技能市场](./AGENT_MARKETPLACE.md) | 无 REST 的市场、剪贴板工作流、`SKILL_HUB_MARKETPLACE_PRESETS_JSON` 示例 |
+| [本机运行契约](./facts/studio.md) | 监听地址、端口重试、API-only、Watcher、WebSocket |
+| [示例输出与 JSON 形状](./facts/examples-and-output.md) | `/api/health`、`/api/debug`、WebSocket 消息示例 |

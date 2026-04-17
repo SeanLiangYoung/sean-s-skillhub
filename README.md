@@ -74,9 +74,12 @@ npm start
 
 ## 可选环境变量
 
-- `PORT` — 自定义起始端口（默认 3456；占用时自动向上尝试到 3460）
+- `PORT` — 自定义起始端口（默认 3456；占用时自动向上尝试后续若干端口）
 - `SKILL_HUB_NO_OPEN=1` — 启动时不自动打开浏览器
 - `SKILL_HUB_EXTRA_PATHS` — 额外的扫描路径，冒号或逗号分隔
+- `SKILL_HUB_PROJECT_ROOTS` — 逗号/冒号分隔的**父目录**列表，对其每个子目录做一层项目发现（与 `~/Projects` 等逻辑相同）
+
+更多（关闭文件监听、ClawHub、Skillhub.cn、市场预设 JSON 等）见 [docs/development.md#环境变量](docs/development.md#环境变量)。
 
 ## 目录结构
 
