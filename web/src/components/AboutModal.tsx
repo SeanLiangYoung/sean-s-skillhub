@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { APP_VERSION } from '../appVersion'
 import { PROJECT_GITHUB_REPO, PROJECT_GITHUB_URL } from '../project'
 
 interface Props {
@@ -7,8 +8,6 @@ interface Props {
   stats: { total: number; global: number; project: number }
   conflictCount: number
 }
-
-const VERSION = '0.3.0'
 
 export function AboutModal({ open, onClose, stats, conflictCount }: Props) {
   // Lock scroll while open + esc to close
@@ -50,7 +49,7 @@ export function AboutModal({ open, onClose, stats, conflictCount }: Props) {
             S
           </div>
           <h2 className="text-xl font-bold text-slate-100 mb-1">Skill Hub</h2>
-          <div className="text-xs text-slate-500 mb-3">v{VERSION}</div>
+          <div className="text-xs text-slate-500 mb-3">v{APP_VERSION}</div>
           <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
             本地扫描、聚合与管理 Claude / Codex 等 Agent Skills
           </p>

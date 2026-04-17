@@ -3,6 +3,7 @@ import os from 'os'
 import { fullScan } from '../scanner/discovery.js'
 import { AGENTS } from '../scanner/agents.js'
 import type { ScanResult } from '../types.js'
+import { getAppVersion } from '../packageInfo.js'
 
 let cachedResult: ScanResult | null = null
 
@@ -96,7 +97,7 @@ export async function skillRoutes(app: FastifyInstance) {
       cachedResult = await fullScan()
     }
     return {
-      version: '0.3.0',
+      version: getAppVersion(),
       node: process.version,
       platform: process.platform,
       cwd: process.cwd(),
