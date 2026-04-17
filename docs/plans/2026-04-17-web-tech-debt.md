@@ -116,6 +116,10 @@
 
 **Verify:** 刷新页面保持当前 Tab；`docs/testing.md` 中 E2E 若存在可补一条打开带 query 的 URL。
 
+**实现说明（已落地）：** 未引入 `react-router-dom`；使用 `?view=` 与 `history.pushState` / `popstate`。代码见 `web/src/utils/appViewUrl.ts`、`web/src/hooks/useSyncedAppView.ts`，`App` 通过 `useSyncedAppView()` 取得 `view` / `setView`。非法参数回退为 `skills` 并 `replaceState`。Vitest 包含 `web/src/**/*.test.ts`（`appViewUrl.test.ts`）；Playwright 增加 `?view=trash` 与非法参数用例。
+
+**文档同步：** [development.md](../development.md) 已展开参数表与实现索引；[architecture.md](../architecture.md) 增加 SPA 与地址栏；[api.md](../api.md) 增加「浏览器 UI（非 REST）」说明；[testing.md](../testing.md) 增加 TC-NAV 与 L1/L3 表述；[facts/studio.md](../facts/studio.md)、根 [README](../../README.md)、[AGENTS.md](../../AGENTS.md) 已互链。
+
 ---
 
 ### Task C2（可选）: 顶栏「冲突」入口

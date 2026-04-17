@@ -27,6 +27,35 @@ npm run dev:server   # tsx watch server/index.ts
 npm run dev:web      # vite，root 为 web/
 ```
 
+## 前端 URL 与顶栏视图
+
+单页应用可通过查询参数 **`view`** 打开指定顶栏页，便于书签、分享与自动化测试直达某一屏。该机制**仅由浏览器端维护**，不增加新的 REST 路径；与 [`server/app.ts`](../server/app.ts) 中「未知路径回退 `index.html`」配合，刷新或打开带查询参数的链接不会 404。
+
+### 参数约定
+
+| 项目 | 说明 |
+|------|------|
+| 参数名 | `view` |
+| 合法取值 | `skills`、`similar`、`dashboard`、`trash`、`conflicts`、`marketplace`（与 `web/src/types/appView.ts` 中 `AppView` 一致） |
+| 缺省 | 无 `view` 或为空时，界面等价于 **`skills`** |
+| 非法值 | 仍按 **skills** 展示，并将地址栏 **`replaceState`** 为 `?view=skills`（避免残留无效书签） |
+| 其它查询参数 | 写入 `view` 时保留已有参数（仅覆盖或追加 `view`） |
+
+示例（端口以控制台为准，占位符 `<端口>`）：
+
+- 生产或 `npm start`：`http://127.0.0.1:<端口>/?view=trash`
+- 开发 `npm run dev`：前端在 **5173**，后端在 **3456**，浏览器通常打开 Vite 地址，例如 `http://127.0.0.1:5173/?view=marketplace`（同样生效）
+
+### 实现位置（维护时查阅）
+
+| 路径 | 作用 |
+|------|------|
+| `web/src/utils/appViewUrl.ts` | 解析 / 校验 `view`；单元测试见 `web/src/utils/appViewUrl.test.ts` |
+| `web/src/hooks/useSyncedAppView.ts` | `view` 状态与 `history.pushState` / `popstate` 同步 |
+| `web/src/App.tsx` | 使用 `useSyncedAppView()` 取得 `view` 与 `setView` |
+
+顶栏切换会 **`pushState`**，浏览器**后退 / 前进**会恢复之前的 `view` 与地址栏。
+
 ## 生产构建与启动
 
 ```bash
@@ -61,7 +90,7 @@ npm run test:e2e
 | `SKILL_HUB_EXTRA_PATHS` | 额外扫描路径，冒号或逗号分隔 |
 | `SKILL_HUB_CLAWHUB_TOKEN` | ClawHub 请求令牌（可选，可能缓解限流） |
 | `SKILL_HUB_CLAWHUB_TRY_SKILLS_LIST` | 设为 `1` 时优先请求 ClawHub `/api/v1/skills`（见服务端 clawhub 路由注释） |
-| `SKILL_HUB_MARKETPLACE_PRESETS_JSON` | 自定义市场预设 JSON（解析失败时会在日志中提示） |
+| `SKILL_HUB_CLAWHUB_REGISTRY` | 覆盖默认 ClawHub 根地址（默认 `https://clawhub.ai`），须为与 ClawHub 同形状的 API |
 
 更完整的扫描路径说明见根目录 [README](../README.md) 中的「扫描覆盖的位置」。
 
@@ -72,9 +101,6 @@ npm run test:e2e
 
 2. **ClawHub 429 / 限流**  
    减少连续搜索/安装间隔；可配置 `SKILL_HUB_CLAWHUB_TOKEN`。服务端在部分错误响应中会返回可读提示。
-
-3. **Skillhub.cn 安装失败**  
-   确认本机已按 `/api/skillhub-cn/status` 返回中的说明安装 `skillhub` CLI，且可在终端执行 `skillhub --version`。
 
 ## TypeScript 与路径别名
 

@@ -72,6 +72,10 @@ npm run build
 npm start
 ```
 
+### 书签与直达某一屏
+
+在浏览器地址栏使用查询参数 **`view`** 可打开指定顶栏页（如回收站、技能市场），便于收藏链接或写进脚本。合法取值与开发/生产端口差异见 [docs/development.md](docs/development.md) 中的「前端 URL 与顶栏视图」一节。示例：`http://127.0.0.1:3456/?view=trash`（端口以控制台为准）。
+
 ## 可选环境变量
 
 - `PORT` — 自定义起始端口（默认 3456；占用时自动向上尝试后续若干端口）
@@ -86,7 +90,7 @@ npm start
 - `server/` — Fastify 后端（API + WebSocket + 文件监听 + 扫描器）
 - `web/` — React + Vite + Tailwind 前端（含 ErrorBoundary）
 - `bin/` — CLI 入口与首次安装构建脚本
-- `docs/` — 架构说明、API 概览、开发调试（见 [docs/README.md](docs/README.md)）
+- `docs/` — 架构说明、API 概览、开发调试（见 [docs/README.md](docs/README.md)）；内置说明型 SKILL 见 [skills/README.md](skills/README.md)（与 `~/.claude/skills` 安装目录无关）
 
 ## 鸣谢
 

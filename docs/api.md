@@ -66,7 +66,17 @@
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/marketplace/providers` | 合并后的市场提供方配置 |
+| GET | `/api/marketplace/providers` | `{ ok, providers }`，当前仅内置 **ClawHub** 一项 |
+| POST | `/api/marketplace/search` | Body: `q`（必填）, `registries`（通常为 `["clawhub"]`）, 可选 `limit`。服务端请求 ClawHub 兼容搜索 API；`registries` 中其他值会回退为官方 ClawHub 基地址 |
+
+### 内置文档型 SKILL（AI 工作流）
+
+与仓库根目录 `skills/skill-hub-*` 中的说明型 SKILL 同源；Web UI 与 Agent 均应以此为准，而非重复写死长文案。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/skill-hub/docs` | 返回 `{ ok, items[] }`，每项含 `id`、`name`、`description`（YAML frontmatter） |
+| GET | `/api/skill-hub/docs/:id` | `id` 为 `skill-hub-search` \| `skill-hub-install` \| `skill-hub-library` \| `skill-hub-similarity`；成功时返回 `{ ok, id, name, description, bodyMarkdown }`；未知 id 或缺失文件时 `404` `{ ok: false, error: 'not_found' }` |
 
 ### ClawHub（代理与安装）
 
@@ -75,20 +85,17 @@
 | GET | `/api/clawhub/search` | Query: `q`, 可选 `limit`, `registry` |
 | GET | `/api/clawhub/skills` | 浏览列表；可选 `limit`, `sort`, `cursor`, `registry` 等 |
 | GET | `/api/clawhub/skill/:slug` | 单个 skill 元数据 |
+| GET | `/api/clawhub/download` | Query: `slug`, `registry`，可选 `version`, `force=1`。拉取 ZIP **仅下载**（不解压到技能目录）；恶意包 403，可疑包 409（与 install 一致，可 `force=1`） |
 | POST | `/api/clawhub/install` | Body: `slug`, 可选 `version`, `force`, `target`, `registry` |
 
 限流、令牌等见 [开发与调试](./development.md) 中的环境变量说明。
-
-### Skillhub.cn（本机 CLI）
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/skillhub-cn/status` | 是否检测到 `skillhub` CLI |
-| GET | `/api/skillhub-cn/search` | Query: `q` |
-| POST | `/api/skillhub-cn/install` | Body: `name`, 可选 `target` |
 
 ## WebSocket
 
 | 路径 | 说明 |
 |------|------|
 | `/ws` | 订阅文件变更广播；消息为 JSON 字符串 |
+
+## 浏览器 UI（非 REST）
+
+单页前端的顶栏视图可通过地址栏查询参数 **`view`** 直达某一屏（如 `/?view=trash`）。这是**纯前端**约定，**不**对应上表中的额外 HTTP 路径；与 SPA 回退 `index.html` 的行为见 [架构概览](./architecture.md) 与 [开发与调试](./development.md) 中的「前端 URL 与顶栏视图」一节。

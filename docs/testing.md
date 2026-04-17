@@ -18,12 +18,12 @@
 ## 2. 测试层级与策略
 
 
-| 层级        | 对象                                   | 策略                                           |
-| --------- | ------------------------------------ | -------------------------------------------- |
-| L1 单元     | `server/marketplace/ssrf.ts`、纯函数、解析器 | 不依赖 HTTP，快速、可全量跑                             |
-| L2 API 集成 | Fastify 路由 + 临时目录 fixture            | 使用 `inject()` 或独立进程 + `fetch`，覆盖 JSON 形状与状态码 |
-| L3 UI/E2E | React 关键流程                           | 优先「市场切换 + 扫描按钮 + 详情弹窗」；全量可用 Playwright       |
-| L4 手工/探索  | 多项目真实目录、插件 skills                    | 发版前抽样                                        |
+| 层级        | 对象                                                                  | 策略                                                                                    |
+| --------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| L1 单元     | `server/marketplace/ssrf.ts`、`web/src/utils/appViewUrl.ts` 等纯函数、解析器 | 不依赖 HTTP，快速、可全量跑（`vitest.config.ts` 含 `server/**/*.test.ts` 与 `web/src/**/*.test.ts`） |
+| L2 API 集成 | Fastify 路由 + 临时目录 fixture                                           | 使用 `inject()` 或独立进程 + `fetch`，覆盖 JSON 形状与状态码                                          |
+| L3 UI/E2E | React 关键流程                                                          | 含 `?view=` 深链、市场切换、扫描、详情弹窗；`e2e/smoke.spec.ts` + Playwright                           |
+| L4 手工/探索  | 多项目真实目录、插件 skills                                                   | 发版前抽样                                                                                 |
 
 
 **优先级定义**：P0 阻塞发布；P1 核心路径；P2 重要边界；P3 体验与锦上添花。
@@ -55,19 +55,20 @@
 ## 4. 需求追溯简表
 
 
-| 需求域   | 代表能力                                 | 用例前缀         |
-| ----- | ------------------------------------ | ------------ |
-| 扫描与列表 | `/api/scan`、`/api/skills`、筛选         | TC-SCAN-xxx  |
-| 编辑与管理 | 内容保存、toggle、copy、move、删除             | TC-MGT-xxx   |
-| 版本    | snapshot、history、diff、rollback       | TC-VER-xxx   |
-| 相似    | `/api/similar`、ignore                | TC-SIM-xxx   |
-| 冲突    | `/api/conflicts`、冲突视图操作              | TC-CONF-xxx  |
-| 回收站   | trash CRUD、过期                        | TC-TRASH-xxx |
-| 仪表盘   | 统计展示                                 | TC-DASH-xxx  |
-| 市场    | providers、clawhub、skillhub-cn、外链、智能体 | TC-MKT-xxx   |
-| 实时    | WebSocket 广播                         | TC-WS-xxx    |
-| 诊断    | health、debug                         | TC-OPS-xxx   |
-| 安全    | 自定义预设 SSRF/HTTPS                     | TC-SEC-xxx   |
+| 需求域   | 代表能力                             | 用例前缀         |
+| ----- | -------------------------------- | ------------ |
+| 扫描与列表 | `/api/scan`、`/api/skills`、筛选     | TC-SCAN-xxx  |
+| 编辑与管理 | 内容保存、toggle、copy、move、删除         | TC-MGT-xxx   |
+| 版本    | snapshot、history、diff、rollback   | TC-VER-xxx   |
+| 相似    | `/api/similar`、ignore            | TC-SIM-xxx   |
+| 冲突    | `/api/conflicts`、冲突视图操作          | TC-CONF-xxx  |
+| 回收站   | trash CRUD、过期                    | TC-TRASH-xxx |
+| 仪表盘   | 统计展示                             | TC-DASH-xxx  |
+| 市场    | providers、clawhub、marketplace 聚合 | TC-MKT-xxx   |
+| 实时    | WebSocket 广播                     | TC-WS-xxx    |
+| 诊断    | health、debug                     | TC-OPS-xxx   |
+| 前端导航  | `?view=` 与顶栏、`history` 同步        | TC-NAV-xxx   |
+| 安全    | 自定义预设 SSRF/HTTPS                 | TC-SEC-xxx   |
 
 
 ## 5. 用例详表
@@ -161,16 +162,15 @@
 ### 5.9 技能市场（TC-MKT）
 
 
-| ID         | 优先级 | 前置              | 步骤                                                | 期望                                                               |
-| ---------- | --- | --------------- | ------------------------------------------------- | ---------------------------------------------------------------- |
-| TC-MKT-001 | P0  | 服务启动            | GET `/api/marketplace/providers`                  | `ok`；`providers` 为数组；含内置 id（如 clawhub、link-catalog、agent-guided） |
-| TC-MKT-002 | P1  | 网络可用            | GET `/api/clawhub/search?q=test&limit=5`          | 200 或文档约定限流响应；JSON 可解析                                           |
-| TC-MKT-003 | P1  | 同上              | GET `/api/clawhub/skills?limit=5`                 | 列表结构稳定（有分页字段则校验类型）                                               |
-| TC-MKT-004 | P0  | fixture 目标可写    | POST `/api/clawhub/install`（使用测试 slug，安装到临时目录若支持） | 成功时目标出现 skill；失败时 `error` 可读                                     |
-| TC-MKT-005 | P2  | 本机已装 `skillhub` | GET `/api/skillhub-cn/status`                     | 反映已安装                                                            |
-| TC-MKT-006 | P2  | 未安装 CLI         | 卸载或改名 CLI                                         | status 反映未安装；安装接口错误提示友好                                          |
-| TC-MKT-007 | P3  | UI              | 切换「外链目录」「智能体发现」                                   | 展示对应视图；智能体页可复制提示词（剪贴板权限因浏览器而异）                                   |
-| TC-MKT-008 | P1  | UI              | 设置中切换 provider 后进入技能市场                            | 子视图与 `kind` 一致（HTTP / CLI / link-only / agent-guided）            |
+| ID         | 优先级 | 前置           | 步骤                                                                           | 期望                                                                             |
+| ---------- | --- | ------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| TC-MKT-001 | P0  | 服务启动         | GET `/api/marketplace/providers`                                             | `ok`；`providers` 仅含内置 `clawhub` |
+| TC-MKT-002 | P1  | 网络可用         | GET `/api/clawhub/search?q=test&limit=5`                                     | 200 或文档约定限流响应；JSON 可解析                                                         |
+| TC-MKT-003 | P1  | 同上           | GET `/api/clawhub/skills?limit=5`                                            | 列表结构稳定（有分页字段则校验类型）                                                             |
+| TC-MKT-004 | P0  | fixture 目标可写 | POST `/api/clawhub/install`（使用测试 slug，安装到临时目录若支持）                            | 成功时目标出现 skill；失败时 `error` 可读                                                   |
+| TC-MKT-005 | P1  | UI           | 设置中切换默认市场来源后进入技能市场                                                           | 仅展示 ClawHub 兼容源；无 CLI / 外链 / 智能体选项                                             |
+| TC-MKT-006 | P1  | 网络可用         | POST `/api/marketplace/search`，Body: `{"q":"test","registries":["clawhub"]}` | `ok`；`results` 为数组；若有失败源可有 `errors`                                            |
+| TC-MKT-007 | P2  | 网络可用、已知 slug | GET `/api/clawhub/download?slug=<slug>&registry=clawhub`（勿在生产环境对恶意包测试）       | 成功时 `Content-Type: application/zip`；可疑包需 `force=1` 时 409 JSON                  |
 
 
 ### 5.10 WebSocket（TC-WS）
@@ -181,12 +181,24 @@
 | TC-WS-001 | P1  | 浏览器打开应用 | 连接 `/ws`；在 fixture 中修改某 `SKILL.md` 保存 | 收到 `type: change`（或当前实现约定）；列表自动刷新或 lastUpdate 更新 |
 
 
-### 5.11 安全：自定义市场预设（TC-SEC）
+### 5.11 前端地址栏与顶栏（TC-NAV）
+
+
+| ID         | 优先级 | 前置        | 步骤                                          | 期望                                          |
+| ---------- | --- | --------- | ------------------------------------------- | ------------------------------------------- |
+| TC-NAV-001 | P2  | 已构建并启动 UI | 浏览器打开 `/?view=trash`（端口以实际为准；开发模式可为 `5173`） | 进入回收站视图（如可见「回收站」标题或等价 UI）                   |
+| TC-NAV-002 | P2  | 同上        | 打开 `/?view=<非法字符串>`                         | 按 skills 处理，地址栏修正为含 `view=skills`（与实现一致）    |
+| TC-NAV-003 | P3  | 同上        | 通过顶栏切换两次视图后使用浏览器后退                          | 恢复上一 `view` 与查询参数（`pushState` / `popstate`） |
+
+
+自动化：`e2e/smoke.spec.ts` 中含 `view=trash` 与非法 `view` 的用例；单元测试见 `web/src/utils/appViewUrl.test.ts`。
+
+### 5.12 安全：自定义市场预设（TC-SEC）
 
 
 | ID         | 优先级 | 前置                                                          | 步骤   | 期望                                                               |
 | ---------- | --- | ----------------------------------------------------------- | ---- | ---------------------------------------------------------------- |
-| TC-SEC-001 | P0  | 设置 `SKILL_HUB_MARKETPLACE_PRESETS_JSON` 含 `http://` 或内网 URL | 启动服务 | 该项被跳过或拒绝；日志有警告（与 [AGENT_MARKETPLACE](./AGENT_MARKETPLACE.md) 一致） |
+| TC-SEC-001 | P1  | — | `validateHttpsRegistryUrl` 单测 | `http://`、localhost、内网 IP 等被拒绝（见 `server/marketplace/ssrf.test.ts`） |
 | TC-SEC-002 | P0  | JSON 中 `id` 与保留 id 冲突                                       | 启动   | 不合并进 providers 或跳过并告警                                            |
 | TC-SEC-003 | P1  | 合法 `https` 公网 registry                                      | 启动   | GET `/api/marketplace/providers` 含自定义项                           |
 
@@ -208,18 +220,19 @@
 - TC-TRASH-001、TC-TRASH-002 通过  
 - TC-MKT-001、TC-MKT-002（或记录外部服务不可用）通过  
 - TC-SEC-001 通过（自定义预设场景若启用）  
-- `npm test` 通过（若改动触及服务端逻辑或市场 URL 校验）  
+- 若改动触及顶栏或地址栏：TC-NAV-001、TC-NAV-002 手工或 E2E 通过（见 `e2e/smoke.spec.ts`）  
+- `npm test` 通过（若改动触及服务端逻辑、市场 URL 校验或 `appViewUrl` 等纯函数）  
 - `npm run build` 成功
 
 ## 8. 自动化落地建议（可选扩展）
 
 
-| 状态  | 内容                                                                                                                      |
-| --- | ----------------------------------------------------------------------------------------------------------------------- |
-| 已有  | **Vitest**：`server/marketplace/ssrf.test.ts` 等；`server/api.integration.test.ts` 使用 Fastify `inject`                     |
-| 已有  | **Playwright**：`e2e/smoke.spec.ts`；先 `npm run build` 再 `npm run test:e2e`                                               |
-| 已有  | **CI**：`.github/workflows/ci.yml` 依次 `npm ci` → `npm test` → `npm run build` → Playwright Chromium → `npm run test:e2e` |
-| 可选  | 扩大 `inject` 覆盖（fixture 目录 + 环境变量）、增加 UI 场景与视觉回归                                                                         |
+| 状态  | 内容                                                                                                                                                                              |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 已有  | **Vitest**：`server/**/*.test.ts` 与 `web/src/**/*.test.ts`（见根目录 `vitest.config.ts`）；含 `server/api.integration.test.ts` 的 Fastify `inject` 与 `web/src/utils/appViewUrl.test.ts` 等 |
+| 已有  | **Playwright**：`e2e/smoke.spec.ts`；先 `npm run build` 再 `npm run test:e2e`                                                                                                       |
+| 已有  | **CI**：`.github/workflows/ci.yml` 依次 `npm ci` → `npm test` → `npm run build` → Playwright Chromium → `npm run test:e2e`                                                         |
+| 可选  | 扩大 `inject` 覆盖（fixture 目录 + 环境变量）、增加 UI 场景与视觉回归                                                                                                                                 |
 
 
 ---
