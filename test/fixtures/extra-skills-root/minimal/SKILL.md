@@ -1,8 +1,8 @@
 ---
 name: CI Minimal Skill
-description: Test fixture for Skill Hub integration tests.
+description: Vitest fixture skill; not used in production.
 ---
 
-# CI Minimal
+# CI Minimal Skill
 
-This skill lives under `extra-skills-root/minimal/` so `SKILL_HUB_EXTRA_PATHS` can point at the parent folder.
+This file exists so `server/api.integration.test.ts` can assert `SKILL_HUB_EXTRA_PATHS` scanning when pointed at `test/fixtures/extra-skills-root`.

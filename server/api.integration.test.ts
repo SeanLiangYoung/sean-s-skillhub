@@ -33,6 +33,27 @@ describe('HTTP API (inject)', () => {
     expect(res.json()).toEqual({ status: 'ok' })
   })
 
+  it('GET /api/skill-hub/docs lists bundled skills', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/skill-hub/docs' })
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { ok?: boolean; items?: { id: string }[] }
+    expect(body.ok).toBe(true)
+    const ids = (body.items || []).map((i) => i.id)
+    expect(ids).toContain('skill-hub-search')
+    expect(ids).toContain('skill-hub-install')
+    expect(ids).toContain('skill-hub-library')
+    expect(ids).toContain('skill-hub-similarity')
+  })
+
+  it('GET /api/skill-hub/docs/skill-hub-search returns markdown body', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/skill-hub/docs/skill-hub-search' })
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { ok?: boolean; bodyMarkdown?: string; name?: string }
+    expect(body.ok).toBe(true)
+    expect(body.name).toBe('skill-hub-search')
+    expect(body.bodyMarkdown).toMatch(/技能市场|ClawHub|marketplace/i)
+  })
+
   it('GET /api/marketplace/providers', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/marketplace/providers' })
     expect(res.statusCode).toBe(200)
