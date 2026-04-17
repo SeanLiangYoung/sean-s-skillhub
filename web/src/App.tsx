@@ -3,6 +3,7 @@ import { useSkills } from './hooks/useSkills'
 import { useWebSocket } from './hooks/useWebSocket'
 import { useTheme } from './hooks/useTheme'
 import { useBulkSkillActions } from './hooks/useBulkSkillActions'
+import { useSyncedAppView } from './hooks/useSyncedAppView'
 import { StatsBar } from './components/StatsBar'
 import { SkillDetail } from './components/SkillDetail'
 import { Dashboard } from './components/Dashboard'
@@ -16,7 +17,6 @@ import type { MarketplaceProviderInfo } from './types/marketplace'
 import { MARKETPLACE_PROVIDERS_FALLBACK } from './data/marketplaceFallbackProviders'
 import { Footer } from './components/Footer'
 import type { Skill } from './hooks/useSkills'
-import type { AppView } from './types/appView'
 import type { SkillGroupBy } from './types/skillsList'
 import { SkillsHomeView } from './components/SkillsHomeView'
 import { ConflictsPage } from './components/ConflictsPage'
@@ -42,7 +42,7 @@ function App() {
       })
   }, [])
 
-  const [view, setView] = useState<AppView>('skills')
+  const { view, setView } = useSyncedAppView()
   const [scopeFilter, setScopeFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [agentFilter, setAgentFilter] = useState('all')
@@ -407,7 +407,7 @@ function App() {
       </header>
 
       <div className="max-w-[1400px] mx-auto px-6 py-6">
-        {stats.total > 0 && (
+        {stats.total > 0 && view !== 'marketplace' && (
           <StatsBar stats={stats} projects={projects} conflicts={conflicts.length} />
         )}
 
